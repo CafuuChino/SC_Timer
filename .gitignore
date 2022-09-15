@@ -1,0 +1,4 @@
+# 项目排除路径
+/cmake-build-debug-mingw_stm32/
+/cmake-build-minsizerel/
+/cmake-build-release/
