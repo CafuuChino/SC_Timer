@@ -7,15 +7,18 @@
 
 #include "main.h"
 
-#define BUSY_BANK GPIOA
-#define BUSY_PIN GPIO_PIN_4
-#define TRIG_BANK GPIOA
-#define TRIG_PIN GPIO_PIN_3
+
 
 #define FLASH_DATA_ADDR 0x08007C00
 
 #define PROFILE_NUM 1
 #define OUTPUT_CHANNEL 22
+
+typedef struct GPIO_Package_def {
+    GPIO_TypeDef *GPIO_Type;
+    uint16_t GPIO_Num;
+} GPIO_Package;
+
 extern volatile uint16_t itr_time_count;
 extern volatile uint8_t itr_exec_count;
 extern volatile uint8_t cdc_RX_enable;

@@ -36,7 +36,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-extern SPI_HandleTypeDef hspi1;
+extern I2C_HandleTypeDef hi2c1;
 extern DMA_HandleTypeDef hdma_spi1_tx;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
@@ -62,7 +62,7 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define TRIG_PIN_Pin GPIO_PIN_9
+#define TRIG_PIN_Pin GPIO_PIN_7
 #define TRIG_PIN_GPIO_Port GPIOB
 #define Encoder_Button_Pin GPIO_PIN_2
 #define Encoder_Button_GPIO_Port GPIOA
