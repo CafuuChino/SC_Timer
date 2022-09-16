@@ -1,0 +1,20 @@
+//
+// Created by CafuuChino on 2022/9/17.
+//
+
+#ifndef SC_TIMER_STATE_MACHINE_H
+#define SC_TIMER_STATE_MACHINE_H
+
+#define STATEMACHINE_DEFAULT 0
+#define STATEMACHINE_HL_PROFILE 1
+#define STATEMACHINE_HL_CH 2
+#define STATEMACHINE_HL_TIME1 3
+#define STATEMACHINE_HL_TIME2 4
+
+#define DISPLAY_MODE_ABS 0
+#define DISPLAY_MODE_REL 1
+
+
+void statemachine();
+
+#endif //SC_TIMER_STATE_MACHINE_H

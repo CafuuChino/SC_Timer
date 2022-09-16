@@ -4,123 +4,52 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "oled.h"
 #include "SC_Timer_Core.h"
+#include "state_machine.h"
 #include "usbd_cdc_if.h"
+#include "gpio_input.h"
 
 volatile uint16_t itr_time_count = 0;
 volatile uint8_t itr_exec_count = 0;
 volatile uint8_t cdc_RX_enable = 0;
+
+extern uint8_t display_mode;
+
 uint8_t *cdc_cmd_ptr;
 uint32_t cdc_cmd_len = 0;
 uint16_t trig_mode = 1;
 uint16_t profile_data[PROFILE_NUM][OUTPUT_CHANNEL * 2] = {};
+uint16_t rel_disp[PROFILE_NUM][OUTPUT_CHANNEL * 2] = {};
 
 
-GPIO_TypeDef *GPIO_Bank_List[OUTPUT_CHANNEL] = {GPIOC, GPIOC, GPIOC, GPIOB, GPIOB, GPIOB, GPIOB, GPIOB, GPIOB, GPIOB,
-                                                GPIOA, GPIOB, GPIOB, GPIOB, GPIOB, GPIOB, GPIOB, GPIOB, GPIOB, GPIOB,
-                                                GPIOA, GPIOA};
-uint16_t GPIO_Pin_List[OUTPUT_CHANNEL] = {GPIO_PIN_15, GPIO_PIN_14, GPIO_PIN_13, GPIO_PIN_9, GPIO_PIN_8, GPIO_PIN_7,
-                                          GPIO_PIN_6, GPIO_PIN_5, GPIO_PIN_4, GPIO_PIN_3, GPIO_PIN_15, GPIO_PIN_8,
-                                          GPIO_PIN_15, GPIO_PIN_14, GPIO_PIN_13, GPIO_PIN_12, GPIO_PIN_11, GPIO_PIN_10,
-                                          GPIO_PIN_2, GPIO_PIN_1, GPIO_PIN_0, GPIO_PIN_6};
 
+uint8_t select_prof = 1;
+uint8_t select_ch = 1;
+
+uint8_t cnt = 0;
 #define BUSY_PIN "A4"
 #define TRIG_PIN "A3"
+
+
+
+uint8_t encoder_enable = 0;
+uint32_t pulse_begin, pulse_end;
+uint16_t test = 32767;
 
 char* Output_GPIO_List[OUTPUT_CHANNEL] = {
         "C15","C14","C13","B7","B6","B5","B4","B3","A15","B8","B15",
         "B14","B13","B12","B11","B10","B2","B1","A0","A7","A6","A5"
 };
 
-GPIO_TypeDef *get_GPIO_Type(const char* gpio_str);
-uint16_t get_GPIO_Num(const char* gpio_str);
-uint8_t digitalPin_Read(char* GPIO);
-void digitalPin_Write(char* GPIO, uint8_t pin_state);
-void digitalPin_Toggle(char* GPIO);
-
-void SerialPrint_Profile(uint8_t profile_index);
-
+void start_running(uint8_t profile_index);
+void CDC_Print_Profile(uint8_t profile_index);
 void test_data();
-
 void Flash_ReadConfig();
-
 void Flash_WriteConfig();
-
 void CommandHandler(uint8_t buf, uint16_t size);
-
-GPIO_TypeDef *get_GPIO_Type(const char* gpio_str){
-    switch(gpio_str[0]){
-#ifdef GPIOA
-        case 'A': return GPIOA;
-#endif
-#ifdef GPIOB
-        case 'B': return GPIOB;
-#endif
-#ifdef GPIOC
-        case 'C': return GPIOC;
-#endif
-#ifdef GPIOD
-        case 'D': return GPIOD;
-#endif
-#ifdef GPIOE
-            case 'E': return GPIOE;
-#endif
-#ifdef GPIOF
-            case 'F': return GPIOF;
-#endif
-#ifdef GPIOG
-            case 'G': return GPIOG;
-#endif
-#ifdef GPIOH
-            case 'H': return GPIOH;
-#endif
-        default: return GPIOA;
-    }
-}
-
-uint16_t get_GPIO_Num(const char* gpio_str){
-    char *not_dig_ptr;
-    uint8_t pin_num = strtol(gpio_str+1, &not_dig_ptr, 10);
-    switch(pin_num){
-        case 0 : return GPIO_PIN_0;
-        case 1 : return GPIO_PIN_1;
-        case 2 : return GPIO_PIN_2;
-        case 3 : return GPIO_PIN_3;
-        case 4 : return GPIO_PIN_4;
-        case 5 : return GPIO_PIN_5;
-        case 6 : return GPIO_PIN_6;
-        case 7 : return GPIO_PIN_7;
-        case 8 : return GPIO_PIN_8;
-        case 9 : return GPIO_PIN_9;
-        case 10 : return GPIO_PIN_10;
-        case 11 : return GPIO_PIN_11;
-        case 12 : return GPIO_PIN_12;
-        case 13 : return GPIO_PIN_13;
-        case 14 : return GPIO_PIN_14;
-        case 15 : return GPIO_PIN_15;
-        default : return GPIO_PIN_0;
-    }
-}
-
-uint8_t digitalPin_Read(char* GPIO){
-    return HAL_GPIO_ReadPin(
-            get_GPIO_Type(GPIO),
-            get_GPIO_Num(GPIO));
-}
-void digitalPin_Write(char* GPIO, uint8_t pin_state){
-    HAL_GPIO_WritePin(
-            get_GPIO_Type(GPIO),
-            get_GPIO_Num(GPIO),
-            pin_state);
-}
-void digitalPin_Toggle(char* GPIO){
-    HAL_GPIO_TogglePin(get_GPIO_Type(GPIO),
-                       get_GPIO_Num(GPIO));
-}
-
-void CH(char *s) {
-    uint16_t dig;
+void CDC_Command_Handler(char *s) {
     char *ptr;
     uint16_t cmd[4];
     uint8_t buf2[1];
@@ -165,7 +94,7 @@ void CH(char *s) {
                     CDC_Transmit_FS((uint8_t *) info, strlen(info));
                     break;
                 }
-                SerialPrint_Profile(cmd[0] - 1);
+                CDC_Print_Profile(cmd[0] - 1);
                 break;
             }
             case 'e': {
@@ -185,14 +114,55 @@ void CH(char *s) {
     }
 }
 
+void abs2rel(){
+    for (uint8_t j = 0; j < PROFILE_NUM; j++){
+        rel_disp[j][0] = profile_data[j][0];
+        for (uint8_t i = 1; i < 2*OUTPUT_CHANNEL; i++){
+            rel_disp[j][i] = profile_data[j][i] - profile_data[j][i - 1];
+        }
+    }
+}
 
+void rel2abs(){
+    for (uint8_t j = 0; j < PROFILE_NUM; j++){
+        profile_data[j][0] = rel_disp[j][0];
+        uint16_t sum = rel_disp[j][0];
+        for (uint8_t i = 1; i < 2*OUTPUT_CHANNEL; i++) {
+            sum += rel_disp[j][i];
+            profile_data[j][i] = sum;
+        }
+    }
+}
+
+uint8_t rel_available(const uint16_t* rel_arr){
+    uint32_t sum = 0;
+    for (uint8_t i = 0; i < 2*OUTPUT_CHANNEL; i++){
+        sum += rel_arr[i];
+        if (sum > 65535){
+            return i+1;
+        }
+    }
+    return 0;
+}
+
+uint8_t abs_available(const uint16_t* abs_arr){
+    for (uint8_t i = 0; i < 2*OUTPUT_CHANNEL - 1; i++) {
+        if (abs_arr[i] > abs_arr[i+1]) return i;
+    }
+    return 0;
+}
 void main_setup() {
+    test_data();
+    rel2abs();
     OLED_Init();
-    OLED_Display_On();
     OLED_Clear();
-    //OLED_On();
+    HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
+    //pulse_begin = HAL_GetTick();
+    //__HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
+   // HAL_TIM_Base_Start_IT(&htim1);
+
+    __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
     return;
-    //test_data();
     //Flash_WriteConfig();
     for (uint8_t i = 0; i < OUTPUT_CHANNEL; i++) {
         digitalPin_Write(Output_GPIO_List[i], !trig_mode);
@@ -201,39 +171,40 @@ void main_setup() {
 }
 
 void main_loop() {
-    //OLED_Clear();
-    //OLED_ShowString(0,0,"ABCDEFGHIJKLMN",16);
-    OLED_ShowChinese(0,0,1);
-    OLED_ShowChinese(17,0,1);
-    OLED_ShowChinese(34,0,2);
-    OLED_ShowChinese(51,0,3);
-    OLED_ShowString(0,2,"ABCDEFGHIJKLMN",16);
-    OLED_ShowString(0,4,"ABCDEFGHIJKLMN",16);
-    OLED_ShowString(0,6,"ABCDEFGHIJKLMN",16);
+    statemachine();
+    //start_running(0);
+    //HAL_Delay(200);
 //    uint8_t buf[2] = {*(__IO uint16_t*)(FLASH_DATA_ADDR) >> 8, *(__IO uint16_t*)(FLASH_DATA_ADDR)};
 //    CDC_Transmit_FS(buf,2);
     if (cdc_RX_enable) {
-        CH((char *) cdc_cmd_ptr);
+        CDC_Command_Handler((char *) cdc_cmd_ptr);
         cdc_RX_enable = 0;
     }
 
-    //digitalPin_Toggle("A7");
-    //HAL_Delay(200);
-    //SerialPrint_Profile(0);
-    //HAL_Delay(1000);
 }
 
 
-void CommandHandler(uint8_t buf, uint16_t size) {
-
-}
 
 void test_data() {
+    for (int j = 0; j < PROFILE_NUM; j++)
     for (uint8_t i = 0; i < OUTPUT_CHANNEL * 2; i++) {
-        profile_data[0][i] = 33 + 1 * i;
+        rel_disp[j][i] = 33 + (j+1) * i;
     }
+
 }
 
+
+
+
+
+void HAL_Delay(uint32_t Delay){
+    uint32_t tickstart = HAL_GetTick();
+    uint32_t wait = Delay;
+
+    while ((HAL_GetTick() - tickstart) < wait)
+    {
+    }
+}
 void start_running(uint8_t profile_index) {
 
     //test_data();
@@ -250,12 +221,13 @@ void start_running(uint8_t profile_index) {
         digitalPin_Write(Output_GPIO_List[i], !trig_mode);
     }
     // set the BUSY signal pin
-    digitalPin_Write(BUSY_PIN, 1);
+
     itr_exec_count = 0;
     itr_time_count = 0;
     // pre-calculated cycle number
     uint8_t running_cycle = OUTPUT_CHANNEL * 2;
     // start TIM1 count and interrupt
+    digitalPin_Write(BUSY_PIN, 1);
     HAL_TIM_Base_Start_IT(&htim1);
 
     // main cycle
@@ -268,8 +240,7 @@ void start_running(uint8_t profile_index) {
     HAL_TIM_Base_Stop_IT(&htim1);
     digitalPin_Write(BUSY_PIN, 0);
 }
-
-void SerialPrint_Profile(uint8_t profile_index) {
+void CDC_Print_Profile(uint8_t profile_index) {
 
     char title_buf[30] = "Profile: ";
     char newline_buf[3] = "\r\n";
@@ -277,7 +248,7 @@ void SerialPrint_Profile(uint8_t profile_index) {
     itoa(profile_index, int_buf, 10);
     strcat(title_buf, int_buf);
     strcat(title_buf, newline_buf);
-    CDC_Transmit_FS((uint8_t *) title_buf, strlen(title_buf));
+    CDC_Transmit_FS((uint8_t *)title_buf, strlen(title_buf));
     HAL_Delay(1);
     char timer_info_buf[30] = "Ch";
     char timer_info_buf2[20] = ": Offset: ";
@@ -299,7 +270,6 @@ void SerialPrint_Profile(uint8_t profile_index) {
     }
 }
 
-
 void Flash_ReadConfig() {
     trig_mode = *(__IO uint16_t *) (FLASH_DATA_ADDR);
     uint16_t offset = 0;
@@ -310,7 +280,6 @@ void Flash_ReadConfig() {
         }
     }
 }
-
 void Flash_WriteConfig() {
     FLASH_EraseInitTypeDef pEraseInit;
     HAL_FLASH_Unlock();
@@ -328,4 +297,82 @@ void Flash_WriteConfig() {
         }
     }
     HAL_FLASH_Lock();
+}
+/**
+ *
+ * @param x OLED Display X_Pos
+ * @param row OLED Dispplay Y_Row(8 pix/row)
+ * @param num display number
+ * @param width display width
+ * @param reverse 0-default 1~5-reverse_set_digit(54321) 0xFF-reverse_all
+ * @param mode 0-hide_invalid_0 1-display_invalid_0
+ * @return Next display x_pos
+ */
+uint8_t OLED_ShowU16(uint8_t x, uint8_t row, uint16_t num, uint8_t width, uint8_t reverse, uint8_t mode){
+    uint8_t x_pos = x;
+    uint8_t digit;
+    uint16_t origin_digit = num;
+    uint8_t begin_ava = 0;
+    for (uint8_t i = width; i > 0; i--){
+        digit = origin_digit / (uint16_t)pow(10, i-1);
+
+        origin_digit -= digit*(uint16_t)pow(10, i-1);
+        // ava 0
+        if (begin_ava){
+            x_pos = OLED_ShowChar(x_pos, row, '0' + digit, (reverse == i || reverse == 0xFF));
+        }
+        else{
+            if (digit){
+                begin_ava = 1;
+                x_pos = OLED_ShowChar(x_pos, row, '0' + digit, (reverse == i || reverse == 0xFF));
+            }
+            else{
+                if (!mode && i>1){
+                    x_pos = OLED_ShowChar(x_pos, row, ' ', (reverse == i || reverse == 0xFF));
+                }
+                else{
+                    x_pos = OLED_ShowChar(x_pos, row, '0', (reverse == i || reverse == 0xFF));
+                }
+
+            }
+        }
+    }
+    return x_pos;
+}
+void OLED_DispProfile(uint8_t profile_index, uint8_t mode){
+    uint8_t x_pos = 0;
+    x_pos = OLED_ShowString(x_pos,0,"Profile ",mode);
+    x_pos = OLED_ShowChar(x_pos,0,'0'+profile_index,mode);
+    x_pos = OLED_ShowChar(x_pos,0,'/',mode);
+    x_pos = OLED_ShowChar(x_pos,0,'0'+PROFILE_NUM,mode);
+    x_pos = OLED_ShowChar(x_pos, 0, ' ', 0);
+    OLED_ShowChar(x_pos, 0, display_mode?'R':'A',0);
+}
+
+/**
+ *
+ * @param row 1-3
+ * @param channel 1-OUTPUT_CHANNEL
+ * @param mode 0-default 1-all_reverse 2-time1_reverse 3-time2_reverse
+ */
+void OLED_DispChannel(uint8_t row, uint8_t profile, uint8_t channel, uint8_t mode){
+    uint8_t x_pos = 0;
+    x_pos = OLED_ShowString(x_pos, row*2, "Ch",(mode == 1));
+    x_pos = OLED_ShowChar(x_pos, row*2, '0' + (channel / 10), (mode == 1));
+    x_pos = OLED_ShowChar(x_pos, row*2, '0' + (channel % 10), (mode == 1));
+    x_pos = OLED_ShowChar(x_pos, row*2, '|', (mode == 1));
+    x_pos = OLED_ShowU16(x_pos,
+                         row*2,
+                         display_mode ? rel_disp[profile-1][(channel-1)*2] : profile_data[profile-1][(channel-1)*2],
+                         5,
+                         (0xFF * (mode == 1 || mode == 2)),
+                         0);
+    x_pos = OLED_ShowChar(x_pos, row*2, '|', (mode == 1));
+    OLED_ShowU16(x_pos,
+                 row*2,
+                 display_mode ? rel_disp[profile-1][(channel-1)*+1] : profile_data[profile-1][(channel-1)*2+1],
+                 5,
+                 (0xFF * (mode == 1 || mode == 3)),
+                 0);
+
 }

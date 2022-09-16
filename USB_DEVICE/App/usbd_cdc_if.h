@@ -51,6 +51,7 @@
 #define APP_RX_DATA_SIZE  1000
 #define APP_TX_DATA_SIZE  1000
 /* USER CODE BEGIN EXPORTED_DEFINES */
+int8_t CDC_Receive_FS(uint8_t* pbuf, uint32_t *Len);
 /* USER CODE END EXPORTED_DEFINES */
 
 /**
@@ -107,7 +108,7 @@ extern USBD_CDC_ItfTypeDef USBD_Interface_fops_FS;
 uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 
 /* USER CODE BEGIN EXPORTED_FUNCTIONS */
-int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len);
+
 /* USER CODE END EXPORTED_FUNCTIONS */
 
 /**
