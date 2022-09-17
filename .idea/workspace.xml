@@ -16,27 +16,13 @@
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0a34c79a-c59d-480e-9417-a6aa6c10e5fe" name="变更" comment="add SSD1315 Oled Driver">
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SC_Timer/Inc/gpio_input.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SC_Timer/Inc/oledfont.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SC_Timer/Inc/state_machine.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SC_Timer/Src/gpio_input.c" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SC_Timer/Src/state_machine.c" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/STM32F103C8Tx_FLASH.ld" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/stm32f103c8_blue_pill.cfg" afterDir="false" />
+    <list default="true" id="0a34c79a-c59d-480e-9417-a6aa6c10e5fe" name="变更" comment="Finish OLED Setting Panel">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Core/Src/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/Core/Src/main.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Core/Src/stm32f1xx_it.c" beforeDir="false" afterPath="$PROJECT_DIR$/Core/Src/stm32f1xx_it.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal.c" beforeDir="false" afterPath="$PROJECT_DIR$/Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SC_Timer.ioc" beforeDir="false" afterPath="$PROJECT_DIR$/SC_Timer.ioc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/SC_Timer/Inc/SC_Timer_Core.h" beforeDir="false" afterPath="$PROJECT_DIR$/SC_Timer/Inc/SC_Timer_Core.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SC_Timer/Inc/oled.h" beforeDir="false" afterPath="$PROJECT_DIR$/SC_Timer/Inc/oled.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SC_Timer/Inc/state_machine.h" beforeDir="false" afterPath="$PROJECT_DIR$/SC_Timer/Inc/state_machine.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/SC_Timer/Src/SC_Timer_Core.c" beforeDir="false" afterPath="$PROJECT_DIR$/SC_Timer/Src/SC_Timer_Core.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/SC_Timer/Src/oled.c" beforeDir="false" afterPath="$PROJECT_DIR$/SC_Timer/Src/oled.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/USB_DEVICE/App/usbd_cdc_if.c" beforeDir="false" afterPath="$PROJECT_DIR$/USB_DEVICE/App/usbd_cdc_if.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/USB_DEVICE/App/usbd_cdc_if.h" beforeDir="false" afterPath="$PROJECT_DIR$/USB_DEVICE/App/usbd_cdc_if.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SC_Timer/Src/gpio_input.c" beforeDir="false" afterPath="$PROJECT_DIR$/SC_Timer/Src/gpio_input.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SC_Timer/Src/state_machine.c" beforeDir="false" afterPath="$PROJECT_DIR$/SC_Timer/Src/state_machine.c" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,7 +32,7 @@
   <component name="ClangdSettings">
     <option name="formatViaClangd" value="false" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:MinSizeRel" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug-MinGW_STM32" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -136,7 +122,7 @@
       <workItem from="1654515583235" duration="59000" />
       <workItem from="1663256134355" duration="9624000" />
       <workItem from="1663301330456" duration="4775000" />
-      <workItem from="1663306162279" duration="36318000" />
+      <workItem from="1663306162279" duration="44306000" />
     </task>
     <task id="LOCAL-00001" summary="add SSD1315 Oled Driver">
       <created>1663301413655</created>
@@ -145,7 +131,14 @@
       <option name="project" value="LOCAL" />
       <updated>1663301413655</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Finish OLED Setting Panel">
+      <created>1663368570494</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1663368570494</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -164,6 +157,7 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="add SSD1315 Oled Driver" />
-    <option name="LAST_COMMIT_MESSAGE" value="add SSD1315 Oled Driver" />
+    <MESSAGE value="Finish OLED Setting Panel" />
+    <option name="LAST_COMMIT_MESSAGE" value="Finish OLED Setting Panel" />
   </component>
 </project>

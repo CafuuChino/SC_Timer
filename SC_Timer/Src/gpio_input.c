@@ -7,7 +7,7 @@
 #include "gpio_input.h"
 #include "SC_Timer_Core.h"
 
-#define LONG_PRESS_TIME 1000
+#define LONG_PRESS_TIME 700
 uint8_t release = 1;
 
 GPIO_TypeDef *get_GPIO_Type(const char* gpio_str){
@@ -102,7 +102,7 @@ uint8_t key_detect(){
         if(t >= LONG_PRESS_TIME){
             return 2;
         }
-        HAL_Delay(200);
+        HAL_Delay(220);
         if(digitalPin_Read(BUTTON_PIN)){
             release = 1;
             return 1;

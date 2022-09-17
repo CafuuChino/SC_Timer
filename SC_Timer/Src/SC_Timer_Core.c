@@ -34,9 +34,7 @@ uint8_t cnt = 0;
 
 
 
-uint8_t encoder_enable = 0;
-uint32_t pulse_begin, pulse_end;
-uint16_t test = 32767;
+
 
 char* Output_GPIO_List[OUTPUT_CHANNEL] = {
         "C15","C14","C13","B7","B6","B5","B4","B3","A15","B8","B15",
@@ -46,9 +44,7 @@ char* Output_GPIO_List[OUTPUT_CHANNEL] = {
 void start_running(uint8_t profile_index);
 void CDC_Print_Profile(uint8_t profile_index);
 void test_data();
-void Flash_ReadConfig();
-void Flash_WriteConfig();
-void CommandHandler(uint8_t buf, uint16_t size);
+
 void CDC_Command_Handler(char *s) {
     char *ptr;
     uint16_t cmd[4];
@@ -134,10 +130,10 @@ void rel2abs(){
     }
 }
 
-uint8_t rel_available(const uint16_t* rel_arr){
+uint8_t rel_available(){
     uint32_t sum = 0;
     for (uint8_t i = 0; i < 2*OUTPUT_CHANNEL; i++){
-        sum += rel_arr[i];
+        sum += rel_disp[select_prof-1][i];
         if (sum > 65535){
             return i+1;
         }
@@ -145,15 +141,17 @@ uint8_t rel_available(const uint16_t* rel_arr){
     return 0;
 }
 
-uint8_t abs_available(const uint16_t* abs_arr){
-    for (uint8_t i = 0; i < 2*OUTPUT_CHANNEL - 1; i++) {
-        if (abs_arr[i] > abs_arr[i+1]) return i;
+uint8_t abs_available(){
+    for (uint8_t i = 0; i < (uint8_t)(2*OUTPUT_CHANNEL-1); i++) {
+        if (profile_data[select_prof-1][i] > profile_data[select_prof-1][i+1]) return i+1;
     }
     return 0;
 }
 void main_setup() {
-    test_data();
-    rel2abs();
+    Flash_ReadConfig();
+    //test_data();
+    //Flash_WriteConfig();
+    //rel2abs();
     OLED_Init();
     OLED_Clear();
     HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
@@ -162,15 +160,13 @@ void main_setup() {
    // HAL_TIM_Base_Start_IT(&htim1);
 
     __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
-    return;
-    //Flash_WriteConfig();
-    for (uint8_t i = 0; i < OUTPUT_CHANNEL; i++) {
-        digitalPin_Write(Output_GPIO_List[i], !trig_mode);
-    }
-    Flash_ReadConfig();
 }
 
 void main_loop() {
+    //OLED_Disp_AbsErr(11);
+    //HAL_Delay(2000);
+    //OLED_Disp_RelErr(22);
+    //HAL_Delay(2000);
     statemachine();
     //start_running(0);
     //HAL_Delay(200);
@@ -188,7 +184,7 @@ void main_loop() {
 void test_data() {
     for (int j = 0; j < PROFILE_NUM; j++)
     for (uint8_t i = 0; i < OUTPUT_CHANNEL * 2; i++) {
-        rel_disp[j][i] = 33 + (j+1) * i;
+        profile_data[j][i] = 33 + (j+1) * i;
     }
 
 }
@@ -279,6 +275,7 @@ void Flash_ReadConfig() {
             profile_data[i][j] = *(__IO uint16_t *) (FLASH_DATA_ADDR + offset);
         }
     }
+    abs2rel();
 }
 void Flash_WriteConfig() {
     FLASH_EraseInitTypeDef pEraseInit;
@@ -346,7 +343,8 @@ void OLED_DispProfile(uint8_t profile_index, uint8_t mode){
     x_pos = OLED_ShowChar(x_pos,0,'/',mode);
     x_pos = OLED_ShowChar(x_pos,0,'0'+PROFILE_NUM,mode);
     x_pos = OLED_ShowChar(x_pos, 0, ' ', 0);
-    OLED_ShowChar(x_pos, 0, display_mode?'R':'A',0);
+    OLED_ShowChar(112, 0, display_mode?'R':'A',0);
+    OLED_ShowChar(120, 0, trig_mode?'H':'L', 0);
 }
 
 /**
@@ -370,9 +368,36 @@ void OLED_DispChannel(uint8_t row, uint8_t profile, uint8_t channel, uint8_t mod
     x_pos = OLED_ShowChar(x_pos, row*2, '|', (mode == 1));
     OLED_ShowU16(x_pos,
                  row*2,
-                 display_mode ? rel_disp[profile-1][(channel-1)*+1] : profile_data[profile-1][(channel-1)*2+1],
+                 display_mode ? rel_disp[profile-1][(channel-1)*2+1] : profile_data[profile-1][(channel-1)*2+1],
                  5,
                  (0xFF * (mode == 1 || mode == 3)),
                  0);
+}
 
+void OLED_Disp_RelErr(uint8_t index){
+    uint8_t x_pos = 0;
+    uint8_t err_ch, err_time;
+    err_ch = (index - 1) / 2 + 1;
+    err_time = index % 2;
+    x_pos = OLED_ShowString(x_pos, 2, "Err: Ch-", 1);
+    x_pos = OLED_ShowChar(x_pos, 2, '0' + (err_ch / 10), 1);
+    x_pos = OLED_ShowChar(x_pos, 2, '0' + (err_ch % 10), 1);
+    x_pos = OLED_ShowChar(x_pos, 2, ' ', 1); //9
+    OLED_ShowString(x_pos, 2, err_time?"Begin":"End  ", 1);
+    x_pos = 0;
+    OLED_ShowString(x_pos, 4, "Larger than lim ", 1);
+}
+
+void OLED_Disp_AbsErr(uint8_t index){
+    uint8_t x_pos = 0;
+    uint8_t err_ch, err_time;
+    err_ch = (index - 1) / 2 + 1;
+    err_time = index % 2;
+    x_pos = OLED_ShowString(x_pos, 2, "Err: Ch-", 1);
+    x_pos = OLED_ShowChar(x_pos, 2, '0' + (err_ch / 10), 1);
+    x_pos = OLED_ShowChar(x_pos, 2, '0' + (err_ch % 10), 1);
+    x_pos = OLED_ShowChar(x_pos, 2, ' ', 1); //9
+    OLED_ShowString(x_pos, 2, err_time?"Begin":"End  ", 1);
+    x_pos = 0;
+    OLED_ShowString(x_pos, 4, "Ahead of prev   ", 1);
 }
