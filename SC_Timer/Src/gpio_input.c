@@ -102,15 +102,16 @@ uint8_t key_detect(){
         if(t >= LONG_PRESS_TIME){
             return 2;
         }
-        HAL_Delay(220);
-        if(digitalPin_Read(BUTTON_PIN)){
-            release = 1;
-            return 1;
-
+        t = 0;
+        while(t < 200){
+            if (!digitalPin_Read(BUTTON_PIN)){
+                return 3;
+            }
+            HAL_Delay(1);
+            t++;
         }
-        else{
-            return 3;
-        }
+        release = 1;
+        return 1;
     }
     return 0;
 }

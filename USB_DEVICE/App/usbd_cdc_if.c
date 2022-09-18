@@ -265,7 +265,7 @@ int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
   // *Len is received size
   cdc_RX_enable = 1;
   cdc_cmd_ptr = Buf;
-  cdc_cmd_len = *Len;
+  //cdc_cmd_len = *Len;
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
 

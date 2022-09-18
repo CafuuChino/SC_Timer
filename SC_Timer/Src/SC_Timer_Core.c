@@ -19,6 +19,7 @@ extern uint8_t display_mode;
 extern uint8_t statemachine_update;
 
 uint8_t *cdc_cmd_ptr;
+//uint8_t cdc_cmd_len;
 uint16_t trig_mode = 1;
 uint16_t profile_data[PROFILE_NUM][OUTPUT_CHANNEL * 2] = {};
 uint16_t rel_disp[PROFILE_NUM][OUTPUT_CHANNEL * 2] = {};
