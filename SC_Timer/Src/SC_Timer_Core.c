@@ -18,12 +18,12 @@ volatile uint16_t itr_time_count = 0;
 volatile uint8_t itr_exec_count = 0;
 volatile uint8_t cdc_RX_enable = 0;
 
-extern uint8_t display_mode;
+extern uint8_t display_mode; // OLED display mode 0-Absolute; 1-Relative
 extern uint8_t statemachine_update;
 
 extern USBD_HandleTypeDef hUsbDeviceFS;
-uint8_t usb_status = 0;
 
+uint8_t usb_status = 0;
 uint8_t *cdc_cmd_ptr;
 
 uint16_t trig_mode = 1;
@@ -37,8 +37,6 @@ uint8_t select_prof = 1;
 uint8_t select_ch = 1;
 
 uint8_t cnt = 0;
-
-
 
 
 GPIO_TypeDef *Output_Type[OUTPUT_CHANNEL] = {
@@ -93,6 +91,10 @@ uint16_t Output_Pin[OUTPUT_CHANNEL] = {
 void CDC_Print_Profile(uint8_t profile_index, uint8_t mode);
 void init_data();
 
+/**
+ * @brief USB CDC String Command Handler Callback
+ * @param s CDC Command String
+ */
 void CDC_Command_Handler(char *s) {
     char *ptr;
     uint16_t cmd[4];
@@ -223,6 +225,9 @@ void CDC_Command_Handler(char *s) {
     }
 }
 
+/**
+ * @brief Update relative time profile by absolute time profile
+ */
 void abs2rel(){
     for (uint8_t j = 0; j < PROFILE_NUM; j++){
         rel_disp[j][0] = profile_data[j][0];
@@ -232,6 +237,9 @@ void abs2rel(){
     }
 }
 
+/**
+ * @brief Update absolute time profile by relative time profile
+ */
 void rel2abs(){
     for (uint8_t j = 0; j < PROFILE_NUM; j++){
         profile_data[j][0] = rel_disp[j][0];
@@ -243,6 +251,10 @@ void rel2abs(){
     }
 }
 
+/**
+ * @brief check relative time profile if has error_setting
+ * @return 0 for success, other for error index
+ */
 uint8_t rel_available(){
     uint32_t sum = 0;
     for (uint8_t i = 0; i < 2*OUTPUT_CHANNEL; i++){
@@ -253,7 +265,10 @@ uint8_t rel_available(){
     }
     return 0;
 }
-
+/**
+ * @brief check absolute time profile if has error_setting
+ * @return 0 for success, other for error index
+ */
 uint8_t abs_available(){
     for (uint8_t i = 0; i < (uint8_t)(2*OUTPUT_CHANNEL-1); i++) {
         if (profile_data[select_prof-1][i] > profile_data[select_prof-1][i+1]) return i+1;
@@ -261,6 +276,9 @@ uint8_t abs_available(){
     return 0;
 }
 
+/**
+ * @brief Timer setup entrance
+ */
 void main_setup() {
     OLED_Init();
     OLED_Clear();
@@ -279,6 +297,9 @@ void main_setup() {
     __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
 }
 
+/**
+ * @brief Timer loop entrance
+ */
 void main_loop() {
     if ((hUsbDeviceFS.dev_state==USBD_STATE_CONFIGURED) != usb_status){
         usb_status = (hUsbDeviceFS.dev_state==USBD_STATE_CONFIGURED);
@@ -292,7 +313,9 @@ void main_loop() {
 
 }
 
-
+/**
+ * @brief Summon default data form reset
+ */
 void init_data() {
     for (int j = 0; j < PROFILE_NUM; j++)
     for (uint8_t i = 0; i < OUTPUT_CHANNEL * 2; i++) {
@@ -300,17 +323,23 @@ void init_data() {
     }
 }
 
-
+/**
+ * @brief Rewrite ST HAL_Delay to support 1ms delay
+ * @param Delay delay time(support 1ms)
+ */
 void HAL_Delay(uint32_t Delay){
     uint32_t tickstart = HAL_GetTick();
     uint32_t wait = Delay;
     while ((HAL_GetTick() - tickstart) < wait){}
 }
 
+/**
+ * @brief Timer Main Function
+ * @param profile_index
+ */
 void start_running(uint8_t profile_index) {
-    //test_data();
     __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
-    // initialize exec time
+    // initialize exec time list
     uint16_t exec_time_list[OUTPUT_CHANNEL * 2];
     uint16_t time_sum = 0;
     for (uint8_t i = 0; i < OUTPUT_CHANNEL * 2; i++) {
@@ -342,6 +371,11 @@ void start_running(uint8_t profile_index) {
     digitalPin_Write(BUSY_PIN, 0);
 }
 
+/**
+ *
+ * @param profile_index profile need to be print
+ * @param mode 0-absolute time; 1-relative time
+ */
 void CDC_Print_Profile(uint8_t profile_index, uint8_t mode) {
     Flash_ReadConfig();
     if (mode) abs2rel();
@@ -388,6 +422,7 @@ void CDC_Print_Profile(uint8_t profile_index, uint8_t mode) {
     }
 }
 
+
 void Flash_ReadConfig() {
     uint16_t offset = 2;
     trig_mode = *(__IO uint16_t *) (FLASH_DATA_ADDR + offset);
@@ -400,6 +435,7 @@ void Flash_ReadConfig() {
     }
     abs2rel();
 }
+
 void Flash_WriteConfig() {
     FLASH_EraseInitTypeDef pEraseInit;
     HAL_FLASH_Unlock();
@@ -409,6 +445,7 @@ void Flash_WriteConfig() {
     uint32_t PageError = 0;
     HAL_FLASHEx_Erase(&pEraseInit, &PageError);
     uint16_t offset = 2;
+    // reset flag is 0xCC at the first half word
     HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, FLASH_DATA_ADDR, 0xCC);
     HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, FLASH_DATA_ADDR + offset, trig_mode);
 
@@ -461,6 +498,7 @@ uint8_t OLED_ShowU16(uint8_t x, uint8_t row, uint16_t num, uint8_t width, uint8_
     }
     return x_pos;
 }
+
 void OLED_DispProfile(uint8_t profile_index, uint8_t mode){
     uint8_t x_pos = 0;
     x_pos = OLED_ShowString(x_pos,0,"Profile ",mode);

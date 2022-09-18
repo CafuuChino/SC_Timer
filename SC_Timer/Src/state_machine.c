@@ -71,10 +71,10 @@ void state_default(){
         start_running(select_prof);
         trig_en = 0;
     }
+    // avoid continuously trigger
     if (digitalPin_Read(TRIG_PIN)){
         trig_en = 1;
     }
-
     if (key == 2){
         statemachine_update = 1;
         statemachine_state = STATEMACHINE_HL_PROFILE;

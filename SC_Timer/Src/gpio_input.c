@@ -2,7 +2,6 @@
 // Created by CafuuChino on 2022/9/17.
 //
 
-#include <stdlib.h>
 #include <math.h>
 #include "gpio_input.h"
 #include "SC_Timer_Core.h"
@@ -46,45 +45,6 @@ GPIO_Struct c13_ = {GPIOC, GPIO_PIN_13};
 GPIO_Struct c14_ = {GPIOC, GPIO_PIN_14};
 GPIO_Struct c15_ = {GPIOC, GPIO_PIN_15};
 
-GPIO_TypeDef *GPIO_List[3] = {
-        GPIOA, GPIOB, GPIOC
-};
-
-GPIO_TypeDef *get_GPIO_Type(const char* gpio_str){
-    return GPIO_List[gpio_str[0]-'A'];
-    switch(gpio_str[0]){
-#ifdef GPIOA
-        case 'A': return GPIOA;
-#endif
-#ifdef GPIOB
-        case 'B': return GPIOB;
-#endif
-#ifdef GPIOC
-        case 'C': return GPIOC;
-#endif
-#ifdef GPIOD
-        case 'D': return GPIOD;
-#endif
-#ifdef GPIOE
-            case 'E': return GPIOE;
-#endif
-#ifdef GPIOF
-            case 'F': return GPIOF;
-#endif
-#ifdef GPIOG
-            case 'G': return GPIOG;
-#endif
-#ifdef GPIOH
-            case 'H': return GPIOH;
-#endif
-        default: return GPIOA;
-    }
-}
-uint16_t get_GPIO_Num(const char* gpio_str){
-    if (*(gpio_str+2) == '\0') return (uint16_t)(0x01<<(*(gpio_str+1) - '0'));
-    else return (uint16_t)(0x01<<(10 + *(gpio_str+1) - '0'));
-
-}
 
 uint8_t digitalPin_Read(GPIO_Type gpio){
     return HAL_GPIO_ReadPin(
@@ -96,10 +56,6 @@ void digitalPin_Write(GPIO_Type gpio, uint8_t pin_state){
             gpio->gpio,
             gpio->pin,
             pin_state);
-}
-void digitalPin_Toggle(GPIO_Type gpio){
-    HAL_GPIO_TogglePin(gpio->gpio,
-                       gpio->pin);
 }
 
 /**
@@ -140,6 +96,13 @@ uint8_t key_detect(){
     return 0;
 }
 
+/**
+ * @brief using encoder to setting a u16(or lager) number
+ * @param u16 setting number
+ * @param digit setting digit (54321)
+ * @param update pointer to number changed flag
+ * @return new setting number
+ */
 uint16_t rot_change_u16(uint16_t u16, uint8_t digit, uint8_t *update){
     uint16_t target_u16 = u16;
     if (__HAL_TIM_GET_COUNTER(&htim2) != ENCODER_DEFAULT){
@@ -164,6 +127,13 @@ uint16_t rot_change_u16(uint16_t u16, uint8_t digit, uint8_t *update){
     return target_u16;
 }
 
+/**
+ * @brief using encoder to setting a u8 number in min-max loop
+ * @param u8 setting number
+ * @param min loop minimum number
+ * @param max loop maximum number
+ * @return new setting number
+ */
 uint8_t rot_change_u8(uint8_t u8, uint8_t min, uint8_t max, uint8_t *update){
     int16_t target_u8 = u8;
     if (__HAL_TIM_GET_COUNTER(&htim2) != ENCODER_DEFAULT){
