@@ -1,7 +1,6 @@
 //
 // Created by CafuuChino on 2022/4/25.
 //
-
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -11,6 +10,8 @@
 #include "usbd_cdc_if.h"
 #include "gpio_input.h"
 
+#define INIT 0
+
 volatile uint16_t itr_time_count = 0;
 volatile uint8_t itr_exec_count = 0;
 volatile uint8_t cdc_RX_enable = 0;
@@ -19,8 +20,9 @@ extern uint8_t display_mode;
 extern uint8_t statemachine_update;
 
 uint8_t *cdc_cmd_ptr;
-//uint8_t cdc_cmd_len;
+
 uint16_t trig_mode = 1;
+uint16_t old_trig_mode;
 uint16_t profile_data[PROFILE_NUM][OUTPUT_CHANNEL * 2] = {};
 uint16_t rel_disp[PROFILE_NUM][OUTPUT_CHANNEL * 2] = {};
 
@@ -30,18 +32,68 @@ uint8_t select_prof = 1;
 uint8_t select_ch = 1;
 
 uint8_t cnt = 0;
-#define BUSY_PIN "A4"
-#define TRIG_PIN "A3"
+#define BUSY_PIN A4
 
 
-char* Output_GPIO_List[OUTPUT_CHANNEL] = {
-        "C15","C14","C13","B7","B6","B5","B4","B3","A15","B8","B15",
-        "B14","B13","B12","B11","B10","B2","B1","A0","A7","A6","A5"
+GPIO_Type Output_GPIO_List[OUTPUT_CHANNEL+1] = {
+        A4,C15,C14,C13,B7,B6,B5,B4,B3,A15,B8,B15,
+        B14,B13,B12,B11,B10,B2,B1,A0,A7,A6,A5
+};
+
+GPIO_TypeDef *Output_Type[OUTPUT_CHANNEL] = {
+        GPIOA,
+        GPIOC,
+        GPIOC,
+        GPIOC,
+        GPIOB,
+        GPIOB,
+        GPIOB,
+        GPIOB,
+        GPIOB,
+        GPIOA,
+        GPIOB,
+        GPIOB,
+        GPIOB,
+        GPIOB,
+        GPIOB,
+        GPIOB,
+        GPIOB,
+        GPIOB,
+        GPIOB,
+        GPIOA,
+        GPIOA,
+        GPIOA,
+        GPIOA
+};
+uint16_t Output_Pin[OUTPUT_CHANNEL] = {
+        GPIO_PIN_4,
+        GPIO_PIN_15,
+        GPIO_PIN_14,
+        GPIO_PIN_13,
+        GPIO_PIN_7,
+        GPIO_PIN_6,
+        GPIO_PIN_5,
+        GPIO_PIN_4,
+        GPIO_PIN_3,
+        GPIO_PIN_15,
+        GPIO_PIN_8,
+        GPIO_PIN_15,
+        GPIO_PIN_14,
+        GPIO_PIN_13,
+        GPIO_PIN_12,
+        GPIO_PIN_11,
+        GPIO_PIN_10,
+        GPIO_PIN_2,
+        GPIO_PIN_1,
+        GPIO_PIN_0,
+        GPIO_PIN_7,
+        GPIO_PIN_6,
+        GPIO_PIN_5
 };
 
 void start_running(uint8_t profile_index);
 void CDC_Print_Profile(uint8_t profile_index, uint8_t mode);
-void test_data();
+void init_data();
 
 void CDC_Command_Handler(char *s) {
     char *ptr;
@@ -210,19 +262,22 @@ uint8_t abs_available(){
     }
     return 0;
 }
+
 void main_setup() {
+#if INIT
+    init_data();
+#else
     Flash_ReadConfig();
-    //test_data();
-    //Flash_WriteConfig();
+#endif
     OLED_Init();
     OLED_Clear();
+    old_trig_mode = trig_mode;
     HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
     __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
 }
 
 void main_loop() {
-
     statemachine();
     if (cdc_RX_enable) {
         CDC_Command_Handler((char *) cdc_cmd_ptr);
@@ -232,8 +287,7 @@ void main_loop() {
 }
 
 
-
-void test_data() {
+void init_data() {
     for (int j = 0; j < PROFILE_NUM; j++)
     for (uint8_t i = 0; i < OUTPUT_CHANNEL * 2; i++) {
         profile_data[j][i] = 33 + (j+1) * i;
@@ -242,19 +296,15 @@ void test_data() {
 }
 
 
-
-
-
 void HAL_Delay(uint32_t Delay){
     uint32_t tickstart = HAL_GetTick();
     uint32_t wait = Delay;
-
     while ((HAL_GetTick() - tickstart) < wait)
     {
     }
 }
-void start_running(uint8_t profile_index) {
 
+void start_running(uint8_t profile_index) {
     //test_data();
     __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
     // initialize exec time
@@ -281,13 +331,17 @@ void start_running(uint8_t profile_index) {
     // main cycle
     while ((itr_exec_count < running_cycle)) {
         if (itr_time_count >= exec_time_list[itr_exec_count]) {
-            digitalPin_Toggle(Output_GPIO_List[itr_exec_count >> 1]);
+            HAL_GPIO_TogglePin(Output_Type[itr_exec_count >> 1], Output_Pin[itr_exec_count >> 1]);
+            //digitalPin_Toggle(Output_GPIO_List[itr_exec_count >> 1]);
             itr_exec_count++;
         }
     }
+
+
     HAL_TIM_Base_Stop_IT(&htim1);
     digitalPin_Write(BUSY_PIN, 0);
 }
+
 void CDC_Print_Profile(uint8_t profile_index, uint8_t mode) {
     Flash_ReadConfig();
     if (mode) abs2rel();

@@ -113,9 +113,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-      //CDC_Transmit_FS(d,1);
       main_loop();
-      //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_4);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

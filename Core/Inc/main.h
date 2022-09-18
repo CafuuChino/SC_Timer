@@ -62,14 +62,7 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define TRIG_PIN_Pin GPIO_PIN_7
-#define TRIG_PIN_GPIO_Port GPIOB
-#define Encoder_Button_Pin GPIO_PIN_2
-#define Encoder_Button_GPIO_Port GPIOA
-#define Trigger_Pin GPIO_PIN_3
-#define Trigger_GPIO_Port GPIOA
-#define busy_Pin GPIO_PIN_4
-#define busy_GPIO_Port GPIOA
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

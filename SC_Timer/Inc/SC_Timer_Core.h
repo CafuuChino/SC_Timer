@@ -11,14 +11,15 @@
 #define PROFILE_NUM 8
 #define OUTPUT_CHANNEL 22
 
-#define BUTTON_PIN "A2"
+#define BUTTON_PIN A2
+#define TRIG_PIN A3
 #define ENCODER_DEFAULT 32767
 extern volatile uint16_t itr_time_count;
 extern volatile uint8_t itr_exec_count;
 extern volatile uint8_t cdc_RX_enable;
 extern uint8_t *cdc_cmd_ptr;
-extern uint32_t cdc_cmd_len;
 extern uint16_t trig_mode;
+extern uint16_t old_trig_mode;
 extern uint16_t profile_data[PROFILE_NUM][OUTPUT_CHANNEL * 2];
 extern uint16_t rel_disp[PROFILE_NUM][OUTPUT_CHANNEL * 2];
 extern uint8_t select_prof;
@@ -32,6 +33,7 @@ uint8_t abs_available();
 
 void main_setup();
 void main_loop();
+void start_running(uint8_t profile_index);
 
 void Flash_ReadConfig();
 void Flash_WriteConfig();

@@ -109,7 +109,7 @@ uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 extern USBD_HandleTypeDef hUsbDeviceFS;
 
 /* USER CODE BEGIN EXPORTED_VARIABLES */
-
+//extern uint32_t cdc_cmd_len;
 /* USER CODE END EXPORTED_VARIABLES */
 
 /**

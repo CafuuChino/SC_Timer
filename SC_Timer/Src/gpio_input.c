@@ -7,8 +7,44 @@
 #include "gpio_input.h"
 #include "SC_Timer_Core.h"
 
-#define LONG_PRESS_TIME 700
+#define LONG_PRESS_TIME 500
 uint8_t release = 1;
+
+GPIO_Struct a0_ = {GPIOA, GPIO_PIN_0};
+GPIO_Struct a1_ = {GPIOA, GPIO_PIN_1};
+GPIO_Struct a2_ = {GPIOA, GPIO_PIN_2};
+GPIO_Struct a3_ = {GPIOA, GPIO_PIN_3};
+GPIO_Struct a4_ = {GPIOA, GPIO_PIN_4};
+GPIO_Struct a5_ = {GPIOA, GPIO_PIN_5};
+GPIO_Struct a6_ = {GPIOA, GPIO_PIN_6};
+GPIO_Struct a7_ = {GPIOA, GPIO_PIN_7};
+GPIO_Struct a8_ = {GPIOA, GPIO_PIN_8};
+GPIO_Struct a9_ = {GPIOA, GPIO_PIN_9};
+GPIO_Struct a10_ = {GPIOA, GPIO_PIN_10};
+GPIO_Struct a11_ = {GPIOA, GPIO_PIN_11};
+GPIO_Struct a12_ = {GPIOA, GPIO_PIN_12};
+GPIO_Struct a13_ = {GPIOA, GPIO_PIN_13};
+GPIO_Struct a14_ = {GPIOA, GPIO_PIN_14};
+GPIO_Struct a15_ = {GPIOA, GPIO_PIN_15};
+GPIO_Struct b0_ = {GPIOB, GPIO_PIN_0};
+GPIO_Struct b1_ = {GPIOB, GPIO_PIN_1};
+GPIO_Struct b2_ = {GPIOB, GPIO_PIN_2};
+GPIO_Struct b3_ = {GPIOB, GPIO_PIN_3};
+GPIO_Struct b4_ = {GPIOB, GPIO_PIN_4};
+GPIO_Struct b5_ = {GPIOB, GPIO_PIN_5};
+GPIO_Struct b6_ = {GPIOB, GPIO_PIN_6};
+GPIO_Struct b7_ = {GPIOB, GPIO_PIN_7};
+GPIO_Struct b8_ = {GPIOB, GPIO_PIN_8};
+GPIO_Struct b9_ = {GPIOB, GPIO_PIN_9};
+GPIO_Struct b10_ = {GPIOB, GPIO_PIN_10};
+GPIO_Struct b11_ = {GPIOB, GPIO_PIN_11};
+GPIO_Struct b12_ = {GPIOB, GPIO_PIN_12};
+GPIO_Struct b13_ = {GPIOB, GPIO_PIN_13};
+GPIO_Struct b14_ = {GPIOB, GPIO_PIN_14};
+GPIO_Struct b15_ = {GPIOB, GPIO_PIN_15};
+GPIO_Struct c13_ = {GPIOC, GPIO_PIN_13};
+GPIO_Struct c14_ = {GPIOC, GPIO_PIN_14};
+GPIO_Struct c15_ = {GPIOC, GPIO_PIN_15};
 
 GPIO_TypeDef *get_GPIO_Type(const char* gpio_str){
     switch(gpio_str[0]){
@@ -63,20 +99,20 @@ uint16_t get_GPIO_Num(const char* gpio_str){
     }
 }
 
-uint8_t digitalPin_Read(char* GPIO){
+uint8_t digitalPin_Read(GPIO_Type gpio){
     return HAL_GPIO_ReadPin(
-            get_GPIO_Type(GPIO),
-            get_GPIO_Num(GPIO));
+            gpio->gpio,
+            gpio->pin);
 }
-void digitalPin_Write(char* GPIO, uint8_t pin_state){
+void digitalPin_Write(GPIO_Type gpio, uint8_t pin_state){
     HAL_GPIO_WritePin(
-            get_GPIO_Type(GPIO),
-            get_GPIO_Num(GPIO),
+            gpio->gpio,
+            gpio->pin,
             pin_state);
 }
-void digitalPin_Toggle(char* GPIO){
-    HAL_GPIO_TogglePin(get_GPIO_Type(GPIO),
-                       get_GPIO_Num(GPIO));
+void digitalPin_Toggle(GPIO_Type gpio){
+    HAL_GPIO_TogglePin(gpio->gpio,
+                       gpio->pin);
 }
 
 /**
@@ -103,6 +139,7 @@ uint8_t key_detect(){
             return 2;
         }
         t = 0;
+        HAL_Delay(5);
         while(t < 200){
             if (!digitalPin_Read(BUTTON_PIN)){
                 return 3;
@@ -122,7 +159,7 @@ uint16_t rot_change_u16(uint16_t u16, uint8_t digit, uint8_t *update){
         *update = 1;
         uint32_t pow1 = (uint32_t)pow(10, digit);
         uint16_t pow2 = (uint16_t)pow(10, digit-1);
-        int16_t enc_delta = (__HAL_TIM_GET_COUNTER(&htim2) - ENCODER_DEFAULT);
+        int16_t enc_delta = (int16_t)(__HAL_TIM_GET_COUNTER(&htim2) - ENCODER_DEFAULT);
         uint8_t num = (target_u16 - (pow1 * (target_u16 / pow1))) / pow2;
         num = num + 10 + enc_delta;
         num -= 10 * (num / 10);
@@ -144,7 +181,7 @@ uint8_t rot_change_u8(uint8_t u8, uint8_t min, uint8_t max, uint8_t *update){
     int16_t target_u8 = u8;
     if (__HAL_TIM_GET_COUNTER(&htim2) != ENCODER_DEFAULT){
         *update = 1;
-        int16_t enc_delta = (__HAL_TIM_GET_COUNTER(&htim2) - ENCODER_DEFAULT);
+        int16_t enc_delta = (int16_t)(__HAL_TIM_GET_COUNTER(&htim2) - ENCODER_DEFAULT);
         target_u8 = (enc_delta > 0) ? target_u8 + 1 : target_u8 - 1;
         if (target_u8 > max) target_u8 = min;
         if (target_u8 < min) target_u8 = max;

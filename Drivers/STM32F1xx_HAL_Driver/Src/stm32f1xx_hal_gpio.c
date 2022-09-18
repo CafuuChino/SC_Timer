@@ -489,7 +489,7 @@ void HAL_GPIO_TogglePin(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
   uint32_t odr;
 
   /* Check the parameters */
-  assert_param(IS_GPIO_PIN(GPIO_Pin));
+  //assert_param(IS_GPIO_PIN(GPIO_Pin));
 
   /* get current Ouput Data Register value */
   odr = GPIOx->ODR;

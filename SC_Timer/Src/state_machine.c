@@ -21,7 +21,7 @@ uint8_t display_mode = DISPLAY_MODE_ABS;
 uint8_t statemachine_state = STATEMACHINE_DEFAULT;
 uint8_t statemachine_update = 1;
 uint8_t rot_update = 0;
-
+uint8_t trig_en = 1;
 
 
 void statemachine(){
@@ -66,12 +66,21 @@ void state_default(){
     }
     select_ch = rot_change_u8(select_ch, 1, OUTPUT_CHANNEL-2, &statemachine_update);
     uint8_t key = key_detect();
-    if (key == 1){
+
+    if (trig_en && !digitalPin_Read(TRIG_PIN)){
+        start_running(select_prof);
+        trig_en = 0;
+    }
+    if (digitalPin_Read(TRIG_PIN)){
+        trig_en = 1;
+    }
+
+    if (key == 2){
         statemachine_update = 1;
         statemachine_state = STATEMACHINE_HL_PROFILE;
         return;
     }
-    else if(key == 2){
+    else if(key == 1){
         statemachine_update = 1;
         statemachine_state = STATEMACHINE_HL_CH;
         return;
@@ -187,7 +196,11 @@ void state_highlight_time1(){
         statemachine_state = STATEMACHINE_HL_TIME2;
         return;
     }
-    else if (key == 2) {
+    else if (key == 2){
+        statemachine_update = 1;
+        statemachine_state = STATEMACHINE_HL_CH;
+    }
+    else if (key == 3) {
         rot_update = 1;
         uint8_t target_row;
         uint8_t flag = 1, key_inner;
@@ -198,7 +211,6 @@ void state_highlight_time1(){
             for (uint8_t i = 1; i < 6;) {
                 if (!flag) break;
                 while (1) {
-
                     if (rot_update) {
                         rot_update = 0;
                         if (display_mode) {
@@ -261,12 +273,11 @@ void state_highlight_time2(){
         }
     }
     uint8_t key = key_detect();
-    if (key == 1){
+    if (key == 1 || key == 2){
         statemachine_update = 1;
-        // temp save
         statemachine_state = STATEMACHINE_HL_CH;
     }
-    else if (key == 2) {
+    else if (key == 3) {
         rot_update = 1;
         uint8_t target_row;
         uint8_t flag = 1, key_inner;
@@ -328,12 +339,17 @@ void state_highlight_trig(){
         OLED_DispProfile(select_prof, 0);
         OLED_ShowChar(120, 0, trig_mode?'H':'L', 1);
     }
+
     trig_mode = rot_change_u8(trig_mode, 0, 1, &statemachine_update);
     uint8_t key = key_detect();
     if (key == 1){
+        if (old_trig_mode != trig_mode){
+            Flash_WriteConfig();
+            old_trig_mode = trig_mode;
+        }
         statemachine_update = 1;
         OLED_ShowChar(120, 0, trig_mode?'H':'L', 0);
-        Flash_WriteConfig();
+
         statemachine_state = STATEMACHINE_DEFAULT;
         return;
     }
