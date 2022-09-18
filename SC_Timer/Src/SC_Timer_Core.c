@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cppcoreguidelines-interfaces-global-init"
 //
 // Created by CafuuChino on 2022/4/25.
 //
@@ -10,7 +12,7 @@
 #include "usbd_cdc_if.h"
 #include "gpio_input.h"
 
-#define INIT 0
+#define BUSY_PIN A4
 
 volatile uint16_t itr_time_count = 0;
 volatile uint8_t itr_exec_count = 0;
@@ -18,6 +20,9 @@ volatile uint8_t cdc_RX_enable = 0;
 
 extern uint8_t display_mode;
 extern uint8_t statemachine_update;
+
+extern USBD_HandleTypeDef hUsbDeviceFS;
+uint8_t usb_status = 0;
 
 uint8_t *cdc_cmd_ptr;
 
@@ -32,16 +37,11 @@ uint8_t select_prof = 1;
 uint8_t select_ch = 1;
 
 uint8_t cnt = 0;
-#define BUSY_PIN A4
 
 
-GPIO_Type Output_GPIO_List[OUTPUT_CHANNEL+1] = {
-        A4,C15,C14,C13,B7,B6,B5,B4,B3,A15,B8,B15,
-        B14,B13,B12,B11,B10,B2,B1,A0,A7,A6,A5
-};
+
 
 GPIO_TypeDef *Output_Type[OUTPUT_CHANNEL] = {
-        GPIOA,
         GPIOC,
         GPIOC,
         GPIOC,
@@ -66,7 +66,6 @@ GPIO_TypeDef *Output_Type[OUTPUT_CHANNEL] = {
         GPIOA
 };
 uint16_t Output_Pin[OUTPUT_CHANNEL] = {
-        GPIO_PIN_4,
         GPIO_PIN_15,
         GPIO_PIN_14,
         GPIO_PIN_13,
@@ -91,7 +90,6 @@ uint16_t Output_Pin[OUTPUT_CHANNEL] = {
         GPIO_PIN_5
 };
 
-void start_running(uint8_t profile_index);
 void CDC_Print_Profile(uint8_t profile_index, uint8_t mode);
 void init_data();
 
@@ -264,13 +262,17 @@ uint8_t abs_available(){
 }
 
 void main_setup() {
-#if INIT
-    init_data();
-#else
-    Flash_ReadConfig();
-#endif
     OLED_Init();
     OLED_Clear();
+    if (*(__IO uint16_t *) (FLASH_DATA_ADDR) != 0xCC){
+        OLED_ShowString(4,3,"From Reset Init",0);
+        HAL_Delay(1500);
+        init_data();
+        Flash_WriteConfig();
+    }
+    else{
+        Flash_ReadConfig();
+    }
     old_trig_mode = trig_mode;
     HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
@@ -278,6 +280,10 @@ void main_setup() {
 }
 
 void main_loop() {
+    if ((hUsbDeviceFS.dev_state==USBD_STATE_CONFIGURED) != usb_status){
+        usb_status = (hUsbDeviceFS.dev_state==USBD_STATE_CONFIGURED);
+        OLED_ShowChar(104, 0, usb_status?'U':' ', 0);
+    }
     statemachine();
     if (cdc_RX_enable) {
         CDC_Command_Handler((char *) cdc_cmd_ptr);
@@ -292,16 +298,13 @@ void init_data() {
     for (uint8_t i = 0; i < OUTPUT_CHANNEL * 2; i++) {
         profile_data[j][i] = 33 + (j+1) * i;
     }
-
 }
 
 
 void HAL_Delay(uint32_t Delay){
     uint32_t tickstart = HAL_GetTick();
     uint32_t wait = Delay;
-    while ((HAL_GetTick() - tickstart) < wait)
-    {
-    }
+    while ((HAL_GetTick() - tickstart) < wait){}
 }
 
 void start_running(uint8_t profile_index) {
@@ -316,7 +319,7 @@ void start_running(uint8_t profile_index) {
     }
     // reset output pins to reset
     for (uint8_t i = 0; i < OUTPUT_CHANNEL; i++) {
-        digitalPin_Write(Output_GPIO_List[i], !trig_mode);
+        HAL_GPIO_WritePin(Output_Type[i], Output_Pin[i], !trig_mode);
     }
     // set the BUSY signal pin
 
@@ -332,12 +335,9 @@ void start_running(uint8_t profile_index) {
     while ((itr_exec_count < running_cycle)) {
         if (itr_time_count >= exec_time_list[itr_exec_count]) {
             HAL_GPIO_TogglePin(Output_Type[itr_exec_count >> 1], Output_Pin[itr_exec_count >> 1]);
-            //digitalPin_Toggle(Output_GPIO_List[itr_exec_count >> 1]);
             itr_exec_count++;
         }
     }
-
-
     HAL_TIM_Base_Stop_IT(&htim1);
     digitalPin_Write(BUSY_PIN, 0);
 }
@@ -389,8 +389,9 @@ void CDC_Print_Profile(uint8_t profile_index, uint8_t mode) {
 }
 
 void Flash_ReadConfig() {
-    trig_mode = *(__IO uint16_t *) (FLASH_DATA_ADDR);
-    uint16_t offset = 0;
+    uint16_t offset = 2;
+    trig_mode = *(__IO uint16_t *) (FLASH_DATA_ADDR + offset);
+
     for (uint8_t i = 0; i < PROFILE_NUM; i++) {
         for (uint8_t j = 0; j < OUTPUT_CHANNEL * 2; j++) {
             offset += 2;
@@ -407,8 +408,10 @@ void Flash_WriteConfig() {
     pEraseInit.NbPages = 1;
     uint32_t PageError = 0;
     HAL_FLASHEx_Erase(&pEraseInit, &PageError);
-    HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, FLASH_DATA_ADDR, trig_mode);
-    uint16_t offset = 0;
+    uint16_t offset = 2;
+    HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, FLASH_DATA_ADDR, 0xCC);
+    HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD, FLASH_DATA_ADDR + offset, trig_mode);
+
     for (uint8_t i = 0; i < PROFILE_NUM; i++) {
         for (uint8_t j = 0; j < 2 * OUTPUT_CHANNEL; j++) {
             offset += 2;
@@ -523,3 +526,4 @@ void OLED_Disp_AbsErr(uint8_t index){
     x_pos = 0;
     OLED_ShowString(x_pos, 4, "Ahead of prev   ", 1);
 }
+

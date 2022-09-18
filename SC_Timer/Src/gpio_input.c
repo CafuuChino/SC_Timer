@@ -46,7 +46,12 @@ GPIO_Struct c13_ = {GPIOC, GPIO_PIN_13};
 GPIO_Struct c14_ = {GPIOC, GPIO_PIN_14};
 GPIO_Struct c15_ = {GPIOC, GPIO_PIN_15};
 
+GPIO_TypeDef *GPIO_List[3] = {
+        GPIOA, GPIOB, GPIOC
+};
+
 GPIO_TypeDef *get_GPIO_Type(const char* gpio_str){
+    return GPIO_List[gpio_str[0]-'A'];
     switch(gpio_str[0]){
 #ifdef GPIOA
         case 'A': return GPIOA;
@@ -76,27 +81,9 @@ GPIO_TypeDef *get_GPIO_Type(const char* gpio_str){
     }
 }
 uint16_t get_GPIO_Num(const char* gpio_str){
-    char *not_dig_ptr;
-    uint8_t pin_num = strtol(gpio_str+1, &not_dig_ptr, 10);
-    switch(pin_num){
-        case 0 : return GPIO_PIN_0;
-        case 1 : return GPIO_PIN_1;
-        case 2 : return GPIO_PIN_2;
-        case 3 : return GPIO_PIN_3;
-        case 4 : return GPIO_PIN_4;
-        case 5 : return GPIO_PIN_5;
-        case 6 : return GPIO_PIN_6;
-        case 7 : return GPIO_PIN_7;
-        case 8 : return GPIO_PIN_8;
-        case 9 : return GPIO_PIN_9;
-        case 10 : return GPIO_PIN_10;
-        case 11 : return GPIO_PIN_11;
-        case 12 : return GPIO_PIN_12;
-        case 13 : return GPIO_PIN_13;
-        case 14 : return GPIO_PIN_14;
-        case 15 : return GPIO_PIN_15;
-        default : return GPIO_PIN_0;
-    }
+    if (*(gpio_str+2) == '\0') return (uint16_t)(0x01<<(*(gpio_str+1) - '0'));
+    else return (uint16_t)(0x01<<(10 + *(gpio_str+1) - '0'));
+
 }
 
 uint8_t digitalPin_Read(GPIO_Type gpio){

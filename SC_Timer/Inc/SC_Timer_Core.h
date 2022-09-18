@@ -9,7 +9,7 @@
 #define FLASH_DATA_ADDR 0x08019000
 
 #define PROFILE_NUM 8
-#define OUTPUT_CHANNEL 22
+#define OUTPUT_CHANNEL 24
 
 #define BUTTON_PIN A2
 #define TRIG_PIN A3
