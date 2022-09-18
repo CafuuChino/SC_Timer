@@ -19,7 +19,6 @@ extern uint8_t display_mode;
 extern uint8_t statemachine_update;
 
 uint8_t *cdc_cmd_ptr;
-uint32_t cdc_cmd_len = 0;
 uint16_t trig_mode = 1;
 uint16_t profile_data[PROFILE_NUM][OUTPUT_CHANNEL * 2] = {};
 uint16_t rel_disp[PROFILE_NUM][OUTPUT_CHANNEL * 2] = {};
@@ -34,9 +33,6 @@ uint8_t cnt = 0;
 #define TRIG_PIN "A3"
 
 
-
-
-
 char* Output_GPIO_List[OUTPUT_CHANNEL] = {
         "C15","C14","C13","B7","B6","B5","B4","B3","A15","B8","B15",
         "B14","B13","B12","B11","B10","B2","B1","A0","A7","A6","A5"
@@ -48,8 +44,7 @@ void test_data();
 
 void CDC_Command_Handler(char *s) {
     char *ptr;
-    uint16_t cmd[5];
-    uint8_t buf2[1];
+    uint16_t cmd[4];
     char *p = s;
     uint8_t cmd_ptr = 0;
     while (*p != '\0') {
@@ -71,9 +66,10 @@ void CDC_Command_Handler(char *s) {
             }
             case '?': {
                 char *info = "Support Command:\r\n"
-                             "$t - set trigger mode\r\n>>$t <0-Low/1-High>\r\n"
-                             "$s - set value\r\n"
-                             ">>$s <profile>-<channel>-<value_type(1-begin_time/2-duration)> <value> <time_type(1-abs_time/2-rel_offset)>\r\n"
+                             "$t - set trigger mode (Immediately Change&Save)\r\n>>$t <0-Low/1-High>\r\n"
+                             "$ss - set value in Abs Time Mode\r\n"
+                             ">>$ss <profile> <channel> <value_type(1-begin_time/2-duration)> <value>\r\n"
+                             ">>$sr <profile> <channel> <value_type(1-begin_time/2-duration)> <value>\r\n"
                              "$rr - print profile info in Relative Offset\r\n>>$rr <profile>\r\n"
                              "$ra - print profile info in Absolute Time\r\n>>$ra <profile>\r\n"
                              "$e - execute profile Timer\r\n>>$e <profile>\r\n"
@@ -83,12 +79,12 @@ void CDC_Command_Handler(char *s) {
             }
 
             case 's': {
-                if (cmd[0] - 1 >= 8 || cmd[1] - 1 >= 22 || cmd[2] - 1 >= 2 || cmd[4] - 1 >= 2) {
-                    char *info = "ERROR: profile should in 1~8; channel should in 1~22; value type should in 1~2; time type should in 1~2\r\n";
+                if (cmd[0] - 1 >= 8 || cmd[1] - 1 >= 22 || cmd[2] - 1 >= 2) {
+                    char *info = "ERROR: profile should in 1~8; channel should in 1~22; value type should in 1~2\r\n";
                     CDC_Transmit_FS((uint8_t *) info, strlen(info));
                     break;
                 }
-                if (cmd[4] - 1){ // rel
+                if (*(s+1) == 'r'){
                     rel_disp[cmd[0] - 1][(cmd[1] - 1) * 2 + cmd[2] - 1] = cmd[3];
                     uint8_t ret = rel_available();
                     if (ret){
@@ -106,10 +102,10 @@ void CDC_Command_Handler(char *s) {
                     }
                     rel2abs();
                 }
-                else{
+                else if(*(s+1) == 's'){
                     profile_data[cmd[0] - 1][(cmd[1] - 1) * 2 + cmd[2] - 1] = cmd[3];
                     uint8_t ret = abs_available();
-                    if (ret){
+                    if (ret) {
                         uint8_t err_ch, err_time;
                         err_ch = (ret - 1) / 2 + 1;
                         err_time = ret % 2;
@@ -117,12 +113,15 @@ void CDC_Command_Handler(char *s) {
                         char digit_buffer[5];
                         itoa(err_ch, digit_buffer, 10);
                         strcat(send_buffer, digit_buffer);
-                        strcat(send_buffer, err_time?"Begin":"Duration");
+                        strcat(send_buffer, err_time ? "Begin" : "Duration");
                         strcat(send_buffer, "Time Error");
-                        CDC_Transmit_FS((uint8_t*)send_buffer, strlen(send_buffer));
+                        CDC_Transmit_FS((uint8_t *) send_buffer, strlen(send_buffer));
                         return;
                     }
                     abs2rel();
+                }
+                else{
+                    CDC_Transmit_FS((uint8_t *)"Please choose $ss or $sr", 24);
                 }
                 statemachine_update = 1;
                 break;
@@ -307,7 +306,7 @@ void CDC_Print_Profile(uint8_t profile_index, uint8_t mode) {
     HAL_Delay(1);
     char timer_info_buf[30] = "Ch";
     char timer_info_buf2[20] = ": Begin: ";
-    char timer_info_buf3[20] = ", Duration: ";
+    char timer_info_buf3[20] = "us, Duration: ";
     for (uint8_t i = 0; i < OUTPUT_CHANNEL; i++) {
         char send_buf[60] = "";
         strcat(send_buf, timer_info_buf);
@@ -326,9 +325,8 @@ void CDC_Print_Profile(uint8_t profile_index, uint8_t mode) {
             strcat(send_buf, timer_info_buf3);
             itoa(profile_data[profile_index][i * 2 + 1], int_buf, 10);
         }
-
-
         strcat(send_buf, int_buf);
+        strcat(send_buf, "us");
         strcat(send_buf, newline_buf);
         CDC_Transmit_FS((uint8_t *) send_buf, strlen(send_buf));
         HAL_Delay(1);
@@ -367,7 +365,7 @@ void Flash_WriteConfig() {
 /**
  *
  * @param x OLED Display X_Pos
- * @param row OLED Dispplay Y_Row(8 pix/row)
+ * @param row OLED Display Y_Row(8 pix/row)
  * @param num display number
  * @param width display width
  * @param reverse 0-default 1~5-reverse_set_digit(54321) 0xFF-reverse_all
@@ -411,7 +409,7 @@ void OLED_DispProfile(uint8_t profile_index, uint8_t mode){
     x_pos = OLED_ShowChar(x_pos,0,'0'+profile_index,mode);
     x_pos = OLED_ShowChar(x_pos,0,'/',mode);
     x_pos = OLED_ShowChar(x_pos,0,'0'+PROFILE_NUM,mode);
-    x_pos = OLED_ShowChar(x_pos, 0, ' ', 0);
+    OLED_ShowChar(x_pos, 0, ' ', 0);
     OLED_ShowChar(112, 0, display_mode?'R':'A',0);
     OLED_ShowChar(120, 0, trig_mode?'H':'L', 0);
 }
