@@ -293,7 +293,9 @@ void main_setup() {
     }
     old_trig_mode = trig_mode;
     HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
-
+    for (uint8_t i = 0; i < OUTPUT_CHANNEL; i++){
+        HAL_GPIO_WritePin(Output_Type[i], Output_Pin[i], !trig_mode);
+    }
     __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
 }
 
@@ -301,6 +303,7 @@ void main_setup() {
  * @brief Timer loop entrance
  */
 void main_loop() {
+    return;
     if ((hUsbDeviceFS.dev_state==USBD_STATE_CONFIGURED) != usb_status){
         usb_status = (hUsbDeviceFS.dev_state==USBD_STATE_CONFIGURED);
         OLED_ShowChar(104, 0, usb_status?'U':' ', 0);
@@ -426,7 +429,6 @@ void CDC_Print_Profile(uint8_t profile_index, uint8_t mode) {
 void Flash_ReadConfig() {
     uint16_t offset = 2;
     trig_mode = *(__IO uint16_t *) (FLASH_DATA_ADDR + offset);
-
     for (uint8_t i = 0; i < PROFILE_NUM; i++) {
         for (uint8_t j = 0; j < OUTPUT_CHANNEL * 2; j++) {
             offset += 2;
