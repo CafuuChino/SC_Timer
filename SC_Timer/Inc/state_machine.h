@@ -13,7 +13,6 @@
 #define STATEMACHINE_HL_TRIG 5
 
 #define DISPLAY_MODE_ABS 0
-#define DISPLAY_MODE_REL 1
 
 
 void statemachine();

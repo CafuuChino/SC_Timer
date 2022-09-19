@@ -49,6 +49,7 @@ typedef GPIO_Struct* GPIO_Type;
 #define C13 &c13_
 #define C14 &c14_
 #define C15 &c15_
+
 extern GPIO_Struct a0_;
 extern GPIO_Struct a1_;
 extern GPIO_Struct a2_;
@@ -84,11 +85,9 @@ extern GPIO_Struct b15_;
 extern GPIO_Struct c13_;
 extern GPIO_Struct c14_;
 extern GPIO_Struct c15_;
-GPIO_TypeDef *get_GPIO_Type(const char* gpio_str);
-uint16_t get_GPIO_Num(const char* gpio_str);
+
 uint8_t digitalPin_Read(GPIO_Type);
 void digitalPin_Write(GPIO_Type, uint8_t pin_state);
-void digitalPin_Toggle(GPIO_Type);
 uint8_t key_detect();
 uint16_t rot_change_u16(uint16_t u16, uint8_t digit, uint8_t *update);
 uint8_t rot_change_u8(uint8_t u8, uint8_t min, uint8_t max, uint8_t *update);
