@@ -11,7 +11,7 @@
 #define PROFILE_NUM 8
 #define OUTPUT_CHANNEL 24
 
-#define ENC_DIR -1
+#define ENC_DIR (-1)
 #define ENC_PRES 2
 
 #define BUTTON_PIN A2

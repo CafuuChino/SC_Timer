@@ -110,7 +110,7 @@ uint8_t key_detect(){
 uint16_t rot_change_u16(uint16_t u16, uint8_t digit, uint8_t *update){
     uint16_t target_u16 = u16;
     int16_t enc_delta = ENC_DIR * (int16_t)(__HAL_TIM_GET_COUNTER(&htim2) - ENCODER_DEFAULT);
-    if (enc_delta && !(abs(enc_delta) % 2)){
+    if (enc_delta && !(enc_delta % ENC_PRES)){
 
         uint32_t pow1 = (uint32_t)pow(10, digit);
         uint16_t pow2 = (uint16_t)pow(10, digit-1);
@@ -143,15 +143,13 @@ uint16_t rot_change_u16(uint16_t u16, uint8_t digit, uint8_t *update){
  */
 uint8_t rot_change_u8(uint8_t u8, uint8_t min, uint8_t max, uint8_t *update){
     int16_t target_u8 = u8;
-    if (__HAL_TIM_GET_COUNTER(&htim2) != ENCODER_DEFAULT){
+    int16_t enc_delta = ENC_DIR * (int16_t)(__HAL_TIM_GET_COUNTER(&htim2) - ENCODER_DEFAULT);
+    if (enc_delta && !(enc_delta % ENC_PRES)){
         *update = 1;
-        int16_t enc_delta = ENC_DIR * (int16_t)(__HAL_TIM_GET_COUNTER(&htim2) - ENCODER_DEFAULT);
-        if (!(enc_delta % 2)){
-            target_u8 = (enc_delta > 0) ? target_u8 + 1 : target_u8 - 1;
-            if (target_u8 > max) target_u8 = min;
-            if (target_u8 < min) target_u8 = max;
-            __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
-        }
+        target_u8 = (enc_delta > 0) ? target_u8 + 1 : target_u8 - 1;
+        if (target_u8 > max) target_u8 = min;
+        if (target_u8 < min) target_u8 = max;
+        __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
     }
     return (uint8_t)target_u8;
 }

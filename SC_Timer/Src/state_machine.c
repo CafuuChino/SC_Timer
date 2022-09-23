@@ -22,7 +22,7 @@ uint8_t statemachine_state = STATEMACHINE_DEFAULT;
 uint8_t statemachine_update = 1;
 uint8_t rot_update = 0;
 uint8_t trig_en = 1;
-
+uint8_t config_change = 0;
 
 void statemachine(){
     switch (statemachine_state){
@@ -148,26 +148,30 @@ void state_highlight_channel(){
     }
     else if (key == 2){
         statemachine_update = 1;
-        if (display_mode){
-            uint8_t chk = rel_available();
-            if (chk){
-                OLED_Disp_RelErr(chk);
-                HAL_Delay(1500);
-                statemachine_state = STATEMACHINE_HL_CH;
-                return;
+
+        if (config_change){
+            if (display_mode){
+                uint8_t chk = rel_available();
+                if (chk){
+                    OLED_Disp_RelErr(chk);
+                    HAL_Delay(1500);
+                    statemachine_state = STATEMACHINE_HL_CH;
+                    return;
+                }
+                rel2abs();
             }
-            rel2abs();
-        }
-        else{
-            uint8_t chk = abs_available();
-            if (chk) {
-                OLED_Disp_AbsErr(chk);
-                HAL_Delay(1500);
-                statemachine_state = STATEMACHINE_HL_CH;
-                return;
+            else{
+                uint8_t chk = abs_available();
+                if (chk) {
+                    OLED_Disp_AbsErr(chk);
+                    HAL_Delay(1500);
+                    statemachine_state = STATEMACHINE_HL_CH;
+                    return;
+                }
             }
+            Flash_WriteConfig();
+            config_change = 0;
         }
-        Flash_WriteConfig();
         statemachine_state = STATEMACHINE_DEFAULT;
         return;
     }
@@ -202,6 +206,7 @@ void state_highlight_time1(){
     }
     else if (key == 3) {
         rot_update = 1;
+        config_change = 1;
         uint8_t target_row;
         uint8_t flag = 1, key_inner;
         if (select_ch <= OUTPUT_CHANNEL-2) target_row = 2;
@@ -211,7 +216,8 @@ void state_highlight_time1(){
             for (uint8_t i = 1; i < 6;) {
                 if (!flag) break;
                 while (1) {
-                    if (rot_update) {
+
+                    if (rot_update) { // refresh display
                         rot_update = 0;
                         if (display_mode) {
                             OLED_ShowU16(40,
@@ -279,6 +285,7 @@ void state_highlight_time2(){
     }
     else if (key == 3) {
         rot_update = 1;
+        config_change = 1;
         uint8_t target_row;
         uint8_t flag = 1, key_inner;
         if (select_ch <= OUTPUT_CHANNEL - 2) target_row = 2;

@@ -29,10 +29,8 @@ uint8_t *cdc_cmd_ptr;
 
 uint16_t trig_mode = 1;
 uint16_t old_trig_mode;
-uint16_t profile_data[PROFILE_NUM][OUTPUT_CHANNEL * 2] = {};
+uint16_t profile_data[PROFILE_NUM][OUTPUT_CHANNEL * 2];
 uint16_t rel_disp[PROFILE_NUM][OUTPUT_CHANNEL * 2] = {};
-uint16_t test = ENCODER_DEFAULT;
-uint16_t test2 = ENCODER_DEFAULT;
 
 uint8_t select_prof = 1;
 uint8_t select_ch = 1;
@@ -287,16 +285,15 @@ uint8_t abs_available(){
 void main_setup() {
     OLED_Init();
     OLED_Clear();
-    init_data();
-//    if (*(__IO uint16_t *) (FLASH_DATA_ADDR) != 0xCC){
-//        OLED_ShowString(4,3,"From Reset Init",0);
-//        HAL_Delay(1500);
-//        init_data();
-//        Flash_WriteConfig();
-//    }
-//    else{
-//        Flash_ReadConfig();
-//    }
+    if (*(__IO uint16_t *) (FLASH_DATA_ADDR) != 0xCC){
+        OLED_ShowString(4,3,"From Reset Init",0);
+        HAL_Delay(1500);
+        init_data();
+        Flash_WriteConfig();
+    }
+    else{
+        Flash_ReadConfig();
+    }
     old_trig_mode = trig_mode;
     HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
     for (uint8_t i = 0; i < OUTPUT_CHANNEL; i++){
@@ -304,10 +301,9 @@ void main_setup() {
     }
     digitalPin_Write(BUTTON_PIN, !BUTTON_TRIG);
     digitalPin_Write(BUSY_PIN, !BUSY_OUTPUT);
-    digitalPin_Write(A0, 0);
-    digitalPin_Write(A1, 0);
+
     __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
-    OLED_ShowU16(0,2,ENCODER_DEFAULT,5,0,1);
+
 
 }
 
@@ -315,12 +311,7 @@ void main_setup() {
  * @brief Timer loop entrance
  */
 void main_loop() {
-    test = rot_change_u16(test,1,&statemachine_update);
-    if (test2 != test){
-        test2 = test;
-        OLED_ShowU16(0,2,test,5,0,1);
-    }
-    return;
+
     if ((hUsbDeviceFS.dev_state==USBD_STATE_CONFIGURED) != usb_status){
         usb_status = (hUsbDeviceFS.dev_state==USBD_STATE_CONFIGURED);
         OLED_ShowChar(104, 0, usb_status?'U':' ', 0);
@@ -330,7 +321,7 @@ void main_loop() {
         CDC_Command_Handler((char *) cdc_cmd_ptr);
         cdc_RX_enable = 0;
     }
-
+    HAL_Delay(5);
 }
 
 /**
@@ -360,35 +351,36 @@ void HAL_Delay(uint32_t Delay){
 void start_running(uint8_t profile_index) {
     __HAL_TIM_CLEAR_IT(&htim1, TIM_IT_UPDATE);
     // initialize exec time list
-    uint16_t exec_time_list[OUTPUT_CHANNEL * 2];
-    uint16_t time_sum = 0;
+    volatile uint16_t exec_time_list[OUTPUT_CHANNEL * 2];
     for (uint8_t i = 0; i < OUTPUT_CHANNEL * 2; i++) {
-        time_sum += profile_data[profile_index][i];
-        exec_time_list[i] = time_sum;
+        exec_time_list[i] = profile_data[profile_index-1][i];
     }
     // reset output pins to reset
     for (uint8_t i = 0; i < OUTPUT_CHANNEL; i++) {
         HAL_GPIO_WritePin(Output_Type[i], Output_Pin[i], !trig_mode);
     }
     // set the BUSY signal pin
-
     itr_exec_count = 0;
     itr_time_count = 0;
     // pre-calculated cycle number
-    uint8_t running_cycle = OUTPUT_CHANNEL * 2;
     // start TIM1 count and interrupt
     digitalPin_Write(BUSY_PIN, BUSY_OUTPUT);
     HAL_TIM_Base_Start_IT(&htim1);
-
     // main cycle
-    while ((itr_exec_count < running_cycle)) {
+    while ((itr_exec_count < OUTPUT_CHANNEL * 2)) {
         if (itr_time_count >= exec_time_list[itr_exec_count]) {
             HAL_GPIO_TogglePin(Output_Type[itr_exec_count >> 1], Output_Pin[itr_exec_count >> 1]);
             itr_exec_count++;
         }
     }
-    HAL_TIM_Base_Stop_IT(&htim1);
+//    HAL_TIM_Base_Stop_IT(&htim1);
+//    OLED_ShowU16(0,0,exec_time_rec[0],5,0,0);
+//    OLED_ShowU16(0,2,exec_time_rec[1],5,0,0);
+//    OLED_ShowU16(0,4,exec_time_rec[2],5,0,0);
+//    OLED_ShowU16(0,6,exec_time_rec[3],5,0,0);
     digitalPin_Write(BUSY_PIN, !BUSY_OUTPUT);
+
+
 }
 
 /**
@@ -456,6 +448,7 @@ void Flash_ReadConfig() {
 }
 
 void Flash_WriteConfig() {
+    OLED_ShowString(0,3,"Saving Config...",0);
     FLASH_EraseInitTypeDef pEraseInit;
     HAL_FLASH_Unlock();
     pEraseInit.TypeErase = FLASH_TYPEERASE_PAGES;
@@ -475,6 +468,7 @@ void Flash_WriteConfig() {
         }
     }
     HAL_FLASH_Lock();
+    statemachine_update = 1;
 }
 /**
  *
