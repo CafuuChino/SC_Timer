@@ -116,18 +116,24 @@ void CDC_Command_Handler(char *s) {
         s++;
         switch (*s) {
             case '$': {
-                char *info = "Solenoid Coils Timer\r\nType \"$?\" to get command info\r\n";
+                char *info = "Solenoid Coils Timer by CafuuChino\r\nType \"$?\" to get command info\r\n";
                 CDC_Transmit_FS((uint8_t *) info, strlen(info));
                 break;
             }
             case '?': {
                 char *info = "Support Command:\r\n"
-                             "$t - set trigger mode (Immediately Change&Save)\r\n>>$t <0-Low/1-High>\r\n"
-                             "$ss - set value in Abs Time Mode\r\n"
-                             ">>$ss <profile> <channel> <value_type(1-begin_time/2-duration)> <value>\r\n"
-                             ">>$sr <profile> <channel> <value_type(1-begin_time/2-duration)> <value>\r\n"
-                             "$rr - print profile info in Relative Offset\r\n>>$rr <profile>\r\n"
-                             "$ra - print profile info in Absolute Time\r\n>>$ra <profile>\r\n"
+                             "-----Setting-----\r\n"
+                             "$t - set trigger level (Immediately Change&Save)\r\n>>$t <0-Low/1-High>\r\n"
+                             "$sa - set value in Absolute Time Mode\r\n"
+                             ">> $ss <profile> <channel> <value_type(1-begin_time/2-duration)> <value>\r\n"
+                             "$sr - set value in Absolute Time Mode\r\n"
+                             ">> $sr <profile> <channel> <value_type(1-begin_time/2-duration)> <value>\r\n"
+                             "-----Loading-----\r\n"
+                             "$ra - print profile info in Absolute Time\r\n"
+                             ">>$ra <profile>\r\n"
+                             "$rr - print profile info in Relative Offset\r\n>"
+                             ">$rr <profile>\r\n"
+                             "-----Executing-----\r\n"
                              "$e - execute profile Timer\r\n>>$e <profile>\r\n"
                              "$u - update setting($s will not save changes to flash until $u)\r\n>>$u\r\n";
                 CDC_Transmit_FS((uint8_t *) info, strlen(info));
@@ -135,8 +141,8 @@ void CDC_Command_Handler(char *s) {
             }
 
             case 's': {
-                if (cmd[0] - 1 >= 8 || cmd[1] - 1 >= 22 || cmd[2] - 1 >= 2) {
-                    char *info = "ERROR: profile should in 1~8; channel should in 1~22; value type should in 1~2\r\n";
+                if (cmd[0] - 1 >= 8 || cmd[1] - 1 >= OUTPUT_CHANNEL || cmd[2] - 1 >= 2) {
+                    char *info = "ERROR: profile should in 1~8; channel should in 1~24; value type should in 1~2\r\n";
                     CDC_Transmit_FS((uint8_t *) info, strlen(info));
                     break;
                 }
@@ -158,7 +164,7 @@ void CDC_Command_Handler(char *s) {
                     }
                     rel2abs();
                 }
-                else if(*(s+1) == 's'){
+                else if(*(s+1) == 'a'){
                     profile_data[cmd[0] - 1][(cmd[1] - 1) * 2 + cmd[2] - 1] = cmd[3];
                     uint8_t ret = abs_available();
                     if (ret) {
@@ -177,9 +183,11 @@ void CDC_Command_Handler(char *s) {
                     abs2rel();
                 }
                 else{
-                    CDC_Transmit_FS((uint8_t *)"Please choose $ss or $sr", 24);
+                    CDC_Transmit_FS((uint8_t *)"Please using $sa or $sr", 24);
                 }
                 statemachine_update = 1;
+                char *info = "Set Success!\r\n";
+                CDC_Transmit_FS((uint8_t *) info, strlen(info));
                 break;
             }
             case 'r': {
@@ -197,26 +205,32 @@ void CDC_Command_Handler(char *s) {
                 break;
             }
             case 'e': {
-                if (cmd[0] - 1 >= 8) {
+                if (cmd[0] - 1 >= PROFILE_NUM) {
                     char *info = "ERROR: profile should in 1~8\r\n";
                     CDC_Transmit_FS((uint8_t *) info, strlen(info));
                     break;
                 }
                 start_running(cmd[0] - 1);
+                char *info = "Executed Success!\r\n";
+                CDC_Transmit_FS((uint8_t *) info, strlen(info));
                 break;
             }
             case 'u': {
                 Flash_WriteConfig();
+                char *info = "Save Config Success!\r\n";
+                CDC_Transmit_FS((uint8_t *) info, strlen(info));
                 statemachine_update = 1;
                 break;
             }
             case 't':{
                 if (cmd[0] > 1) {
-                    char *info = "ERROR: Trigger Mode should in 0~1\r\n";
+                    char *info = "ERROR: Trigger Level should in 0~1\r\n";
                     CDC_Transmit_FS((uint8_t *) info, strlen(info));
                 }
                 trig_mode = cmd[0];
                 Flash_WriteConfig();
+                char *info = "Setting Trig Level Success!\r\n";
+                CDC_Transmit_FS((uint8_t *) info, strlen(info));
                 statemachine_update = 1;
             }
             default:{
@@ -295,13 +309,15 @@ void main_setup() {
         Flash_ReadConfig();
     }
     old_trig_mode = trig_mode;
-    HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
+
     for (uint8_t i = 0; i < OUTPUT_CHANNEL; i++){
         HAL_GPIO_WritePin(Output_Type[i], Output_Pin[i], !trig_mode);
     }
     digitalPin_Write(BUTTON_PIN, !BUTTON_TRIG);
     digitalPin_Write(BUSY_PIN, !BUSY_OUTPUT);
-
+    digitalPin_Write(A0, 0);
+    digitalPin_Write(A1, 0);
+    HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
     __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
 
 
@@ -321,7 +337,7 @@ void main_loop() {
         CDC_Command_Handler((char *) cdc_cmd_ptr);
         cdc_RX_enable = 0;
     }
-    HAL_Delay(5);
+    HAL_Delay(1);
 }
 
 /**
@@ -412,6 +428,7 @@ void CDC_Print_Profile(uint8_t profile_index, uint8_t mode) {
         char send_buf[60] = "";
         strcat(send_buf, timer_info_buf);
         itoa(i + 1, int_buf, 10);
+        if (i < 9) strcat(send_buf, "0");
         strcat(send_buf, int_buf);
         strcat(send_buf, timer_info_buf2);
         if (mode){ // rel
