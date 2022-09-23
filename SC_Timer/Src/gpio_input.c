@@ -3,10 +3,12 @@
 //
 
 #include <math.h>
+#include <stdlib.h>
 #include "gpio_input.h"
 #include "SC_Timer_Core.h"
 
 #define LONG_PRESS_TIME 500
+
 uint8_t release = 1;
 
 GPIO_Struct a0_ = {GPIOA, GPIO_PIN_0};
@@ -64,17 +66,18 @@ void digitalPin_Write(GPIO_Type gpio, uint8_t pin_state){
  */
 uint8_t key_detect(){
     uint16_t t = 0;
-    if (digitalPin_Read(BUTTON_PIN)){
+    if (digitalPin_Read(BUTTON_PIN) != BUTTON_TRIG){
         release = 1;
         return 0;
     }
-    if (!digitalPin_Read(BUTTON_PIN) && release){
+    if ((digitalPin_Read(BUTTON_PIN) == BUTTON_TRIG) && release){
         release = 0;
         HAL_Delay(10);
-        if(digitalPin_Read(BUTTON_PIN)){
+        // jitter
+        if(digitalPin_Read(BUTTON_PIN) != BUTTON_TRIG){
             return 0;
         }
-        while((!digitalPin_Read(BUTTON_PIN)) && (t < LONG_PRESS_TIME)){
+        while((digitalPin_Read(BUTTON_PIN) == BUTTON_TRIG) && (t < LONG_PRESS_TIME)){
             t++;
             HAL_Delay(1);
         }
@@ -84,7 +87,8 @@ uint8_t key_detect(){
         t = 0;
         HAL_Delay(5);
         while(t < 200){
-            if (!digitalPin_Read(BUTTON_PIN)){
+            // double click
+            if ((digitalPin_Read(BUTTON_PIN) == BUTTON_TRIG)){
                 return 3;
             }
             HAL_Delay(1);
@@ -105,13 +109,14 @@ uint8_t key_detect(){
  */
 uint16_t rot_change_u16(uint16_t u16, uint8_t digit, uint8_t *update){
     uint16_t target_u16 = u16;
-    if (__HAL_TIM_GET_COUNTER(&htim2) != ENCODER_DEFAULT){
-        *update = 1;
+    int16_t enc_delta = ENC_DIR * (int16_t)(__HAL_TIM_GET_COUNTER(&htim2) - ENCODER_DEFAULT);
+    if (enc_delta && !(abs(enc_delta) % 2)){
+
         uint32_t pow1 = (uint32_t)pow(10, digit);
         uint16_t pow2 = (uint16_t)pow(10, digit-1);
-        int16_t enc_delta = (int16_t)(__HAL_TIM_GET_COUNTER(&htim2) - ENCODER_DEFAULT);
+        *update = 1;
         uint8_t num = (target_u16 - (pow1 * (target_u16 / pow1))) / pow2;
-        num = num + 10 + enc_delta;
+        num = num + 10 + (enc_delta > 0 ? 1 : -1);
         num -= 10 * (num / 10);
         uint32_t test_target = (pow1 * (target_u16 / pow1)) + (num * pow2) + (target_u16 % pow2);
         //OLED_ShowU16(0,2,num,5,0,1);
@@ -123,6 +128,8 @@ uint16_t rot_change_u16(uint16_t u16, uint8_t digit, uint8_t *update){
         }
         target_u16 = test_target;
         __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
+
+
     }
     return target_u16;
 }
@@ -138,11 +145,13 @@ uint8_t rot_change_u8(uint8_t u8, uint8_t min, uint8_t max, uint8_t *update){
     int16_t target_u8 = u8;
     if (__HAL_TIM_GET_COUNTER(&htim2) != ENCODER_DEFAULT){
         *update = 1;
-        int16_t enc_delta = (int16_t)(__HAL_TIM_GET_COUNTER(&htim2) - ENCODER_DEFAULT);
-        target_u8 = (enc_delta > 0) ? target_u8 + 1 : target_u8 - 1;
-        if (target_u8 > max) target_u8 = min;
-        if (target_u8 < min) target_u8 = max;
-        __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
+        int16_t enc_delta = ENC_DIR * (int16_t)(__HAL_TIM_GET_COUNTER(&htim2) - ENCODER_DEFAULT);
+        if (!(enc_delta % 2)){
+            target_u8 = (enc_delta > 0) ? target_u8 + 1 : target_u8 - 1;
+            if (target_u8 > max) target_u8 = min;
+            if (target_u8 < min) target_u8 = max;
+            __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
+        }
     }
     return (uint8_t)target_u8;
 }

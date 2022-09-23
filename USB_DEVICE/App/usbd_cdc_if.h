@@ -51,7 +51,7 @@
 #define APP_RX_DATA_SIZE  1000
 #define APP_TX_DATA_SIZE  1000
 /* USER CODE BEGIN EXPORTED_DEFINES */
-int8_t CDC_Receive_FS(uint8_t* pbuf, uint32_t *Len);
+//int8_t CDC_Receive_FS(uint8_t* pbuf, uint32_t *Len);
 /* USER CODE END EXPORTED_DEFINES */
 
 /**

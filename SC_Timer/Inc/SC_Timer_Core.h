@@ -11,7 +11,11 @@
 #define PROFILE_NUM 8
 #define OUTPUT_CHANNEL 24
 
+#define ENC_DIR -1
+#define ENC_PRES 2
+
 #define BUTTON_PIN A2
+#define BUTTON_TRIG 1
 #define TRIG_PIN A3
 #define ENCODER_DEFAULT 32767
 extern volatile uint16_t itr_time_count;

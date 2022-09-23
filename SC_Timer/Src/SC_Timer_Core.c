@@ -13,6 +13,7 @@
 #include "gpio_input.h"
 
 #define BUSY_PIN A4
+#define BUSY_OUTPUT 0
 
 volatile uint16_t itr_time_count = 0;
 volatile uint8_t itr_exec_count = 0;
@@ -30,8 +31,8 @@ uint16_t trig_mode = 1;
 uint16_t old_trig_mode;
 uint16_t profile_data[PROFILE_NUM][OUTPUT_CHANNEL * 2] = {};
 uint16_t rel_disp[PROFILE_NUM][OUTPUT_CHANNEL * 2] = {};
-
-
+uint16_t test = ENCODER_DEFAULT;
+uint16_t test2 = ENCODER_DEFAULT;
 
 uint8_t select_prof = 1;
 uint8_t select_ch = 1;
@@ -61,6 +62,8 @@ GPIO_TypeDef *Output_Type[OUTPUT_CHANNEL] = {
         GPIOA,
         GPIOA,
         GPIOA,
+        GPIOA,
+        GPIOA,
         GPIOA
 };
 uint16_t Output_Pin[OUTPUT_CHANNEL] = {
@@ -85,7 +88,9 @@ uint16_t Output_Pin[OUTPUT_CHANNEL] = {
         GPIO_PIN_0,
         GPIO_PIN_7,
         GPIO_PIN_6,
-        GPIO_PIN_5
+        GPIO_PIN_5,
+        GPIO_PIN_9,
+        GPIO_PIN_10
 };
 
 void CDC_Print_Profile(uint8_t profile_index, uint8_t mode);
@@ -282,27 +287,39 @@ uint8_t abs_available(){
 void main_setup() {
     OLED_Init();
     OLED_Clear();
-    if (*(__IO uint16_t *) (FLASH_DATA_ADDR) != 0xCC){
-        OLED_ShowString(4,3,"From Reset Init",0);
-        HAL_Delay(1500);
-        init_data();
-        Flash_WriteConfig();
-    }
-    else{
-        Flash_ReadConfig();
-    }
+    init_data();
+//    if (*(__IO uint16_t *) (FLASH_DATA_ADDR) != 0xCC){
+//        OLED_ShowString(4,3,"From Reset Init",0);
+//        HAL_Delay(1500);
+//        init_data();
+//        Flash_WriteConfig();
+//    }
+//    else{
+//        Flash_ReadConfig();
+//    }
     old_trig_mode = trig_mode;
     HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
     for (uint8_t i = 0; i < OUTPUT_CHANNEL; i++){
         HAL_GPIO_WritePin(Output_Type[i], Output_Pin[i], !trig_mode);
     }
+    digitalPin_Write(BUTTON_PIN, !BUTTON_TRIG);
+    digitalPin_Write(BUSY_PIN, !BUSY_OUTPUT);
+    digitalPin_Write(A0, 0);
+    digitalPin_Write(A1, 0);
     __HAL_TIM_SET_COUNTER(&htim2, ENCODER_DEFAULT);
+    OLED_ShowU16(0,2,ENCODER_DEFAULT,5,0,1);
+
 }
 
 /**
  * @brief Timer loop entrance
  */
 void main_loop() {
+    test = rot_change_u16(test,1,&statemachine_update);
+    if (test2 != test){
+        test2 = test;
+        OLED_ShowU16(0,2,test,5,0,1);
+    }
     return;
     if ((hUsbDeviceFS.dev_state==USBD_STATE_CONFIGURED) != usb_status){
         usb_status = (hUsbDeviceFS.dev_state==USBD_STATE_CONFIGURED);
@@ -360,7 +377,7 @@ void start_running(uint8_t profile_index) {
     // pre-calculated cycle number
     uint8_t running_cycle = OUTPUT_CHANNEL * 2;
     // start TIM1 count and interrupt
-    digitalPin_Write(BUSY_PIN, 1);
+    digitalPin_Write(BUSY_PIN, BUSY_OUTPUT);
     HAL_TIM_Base_Start_IT(&htim1);
 
     // main cycle
@@ -371,7 +388,7 @@ void start_running(uint8_t profile_index) {
         }
     }
     HAL_TIM_Base_Stop_IT(&htim1);
-    digitalPin_Write(BUSY_PIN, 0);
+    digitalPin_Write(BUSY_PIN, !BUSY_OUTPUT);
 }
 
 /**
