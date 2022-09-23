@@ -4,7 +4,7 @@
 
 #ifndef SC_TIMER_STATE_MACHINE_H
 #define SC_TIMER_STATE_MACHINE_H
-
+#include <stdint.h>
 #define STATEMACHINE_DEFAULT 0
 #define STATEMACHINE_HL_PROFILE 1
 #define STATEMACHINE_HL_CH 2
@@ -14,7 +14,8 @@
 
 #define DISPLAY_MODE_ABS 0
 
-
+extern uint8_t statemachine_state;
+extern uint8_t statemachine_update;
 void statemachine();
 
 #endif //SC_TIMER_STATE_MACHINE_H

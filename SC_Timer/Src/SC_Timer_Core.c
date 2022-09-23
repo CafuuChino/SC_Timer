@@ -210,6 +210,11 @@ void CDC_Command_Handler(char *s) {
                     CDC_Transmit_FS((uint8_t *) info, strlen(info));
                     break;
                 }
+                if (statemachine_state != STATEMACHINE_DEFAULT){
+                    char *info = "ERROR: Not in ready state\r\n";
+                    CDC_Transmit_FS((uint8_t *) info, strlen(info));
+                    break;
+                }
                 start_running(cmd[0] - 1);
                 char *info = "Executed Success!\r\n";
                 CDC_Transmit_FS((uint8_t *) info, strlen(info));

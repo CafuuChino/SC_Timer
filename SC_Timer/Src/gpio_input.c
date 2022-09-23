@@ -3,7 +3,6 @@
 //
 
 #include <math.h>
-#include <stdlib.h>
 #include "gpio_input.h"
 #include "SC_Timer_Core.h"
 
