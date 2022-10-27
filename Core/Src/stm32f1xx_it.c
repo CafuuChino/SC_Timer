@@ -226,7 +226,7 @@ void TIM1_UP_IRQHandler(void)
     //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_4);
 
   /* USER CODE END TIM1_UP_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim1);
+  //HAL_TIM_IRQHandler(&htim1);
   /* USER CODE BEGIN TIM1_UP_IRQn 1 */
   /* USER CODE END TIM1_UP_IRQn 1 */
 }

@@ -68,8 +68,8 @@ void state_default(){
     uint8_t key = key_detect();
 
     if (trig_en && !digitalPin_Read(TRIG_PIN)){
-        start_running(select_prof);
         trig_en = 0;
+        start_running(select_prof);
     }
     // avoid continuously trigger
     if (digitalPin_Read(TRIG_PIN)){
